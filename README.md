@@ -20,9 +20,14 @@ it, so every figure in every post reads the same way.
 ## Status
 
 Early. Five diagram types ship today: block diagram, state machine,
-flowchart, swimlane, and sequence — all on the one shared frame. Not
-yet on npm; consume it as a git dependency or copy
-`packages/woodcut/src/`.
+flowchart, swimlane, and sequence — all on the one shared frame.
+
+```bash
+npm install @arjunkhera/woodcut
+```
+
+Or copy `packages/woodcut/src/` — the components are plain files
+with no build step.
 
 ## Use it in a page
 
