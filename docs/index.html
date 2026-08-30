@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>woodcut — figure catalog</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../packages/woodcut/src/tokens.css">
+  <link rel="stylesheet" href="../themes/quiet-editorial.css">
+  <style>
+    body { margin: 0; background: var(--wc-paper); color: var(--wc-body); font-family: var(--wc-serif); }
+    main { max-width: 600px; margin: 0 auto; padding: 48px 24px 96px; }
+    h1 { font-size: 40px; font-weight: 400; line-height: 1.1; color: var(--wc-ink); margin: 0 0 8px; }
+    .sub { font-style: italic; color: var(--wc-muted); margin: 0 0 32px; }
+    h2 { font-size: 25px; font-weight: 500; color: var(--wc-ink); margin: 40px 0 8px; }
+    p { font-size: 18px; line-height: 1.68; margin: 0 0 16px; }
+    .theme { position: fixed; top: 16px; right: 16px; font-family: var(--wc-mono); font-size: 11px; border: 1px solid var(--wc-line-strong); border-radius: 8px; background: var(--wc-paper); color: var(--wc-muted); padding: 6px 12px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <button class="theme" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? '' : 'dark'">light / dark</button>
+  <main>
+    <h1>woodcut</h1>
+    <p class="sub">A figure grammar for technical writing. Hover, expand, replay.</p>
+
+    <h2>Where a capture goes</h2>
+    <p>Nothing writes to the graph directly. Every capture walks the same path, and one human decision sits in the middle of it.</p>
+
+    <wc-block-diagram>
+      <script type="application/json">
+      {
+        "label": "FIG 1 · CAPTURE PIPELINE",
+        "hint": "hover a box or an arrow",
+        "caption": "A capture waits in the queue; an owner decision moves it into the graph. Media rides beside the path, addressed by content.",
+        "variants": [
+          {
+            "name": "full pipeline",
+            "viewBox": [600, 340],
+            "groups": [{ "x": 140, "y": 126, "w": 444, "h": 196, "label": "ENGRAM CORE" }],
+            "nodes": [
+              { "id": "capture", "x": 16, "y": 36, "w": 128, "h": 48, "label": "CAPTURE", "sub": "chat · cli · web", "kind": "plain",
+                "card": { "title": "CAPTURE", "body": "Any client can file a thought: chat, the CLI, or the web app. Nothing is structured yet at this point." } },
+              { "id": "mcp", "x": 208, "y": 36, "w": 140, "h": 48, "label": "MCP SERVER", "sub": "22 tools", "kind": "plain",
+                "card": { "title": "MCP SERVER", "body": "The tool layer. Twenty-two tools wrap the REST API; agents get read and capture tools only." } },
+              { "id": "api", "x": 412, "y": 36, "w": 100, "h": 48, "label": "API", "sub": "rest", "kind": "plain",
+                "card": { "title": "API", "body": "One REST surface for every client. It validates and stores; it never writes to the graph itself." } },
+              { "id": "queue", "x": 168, "y": 158, "w": 180, "h": 50, "label": "PROPOSAL QUEUE", "sub": "expires 14 d · capped", "kind": "focus",
+                "card": { "title": "PROPOSAL QUEUE", "body": "Every agent write waits here. Entries expire after 14 days, and the queue is capped to the review capacity of the owner." } },
+              { "id": "review", "x": 404, "y": 158, "w": 150, "h": 50, "label": "REVIEW", "sub": "owner decides", "kind": "focus",
+                "card": { "title": "REVIEW", "body": "The owner decides. Approve moves the write into the graph; reject records a correction the system learns from." } },
+              { "id": "graph", "x": 404, "y": 248, "w": 150, "h": 50, "label": "GRAPH", "sub": "typed edges", "kind": "focus",
+                "card": { "title": "GRAPH", "body": "Typed entities joined by directed edges. Only reviewed writes land here." } },
+              { "id": "blob", "x": 168, "y": 248, "w": 180, "h": 50, "label": "BLOB STORE", "sub": "content-addressed", "kind": "dim",
+                "card": { "title": "BLOB STORE", "body": "Media rides beside the graph, addressed by content hash, so the same file is never stored twice." } }
+            ],
+            "edges": [
+              { "id": "hop1", "kind": "accent", "points": [[144, 60], [208, 60]],
+                "card": { "title": "CAPTURE → MCP", "body": "The raw thought leaves the client as plain text plus a little context: source, time, and an optional link." } },
+              { "id": "hop2", "kind": "accent", "points": [[348, 60], [412, 60]],
+                "card": { "title": "MCP → API", "body": "The tool call becomes one REST request. The server validates shape here; nothing is transformed yet." } },
+              { "id": "hop3", "kind": "accent", "points": [[462, 84], [462, 112], [258, 112], [258, 158]],
+                "card": { "title": "API → QUEUE", "body": "The write lands as a proposal, not a fact. It carries the intended change and a confidence score." } },
+              { "id": "hop4", "kind": "accent", "points": [[348, 183], [404, 183]],
+                "card": { "title": "QUEUE → REVIEW", "body": "Proposals leave the queue in review order. The owner sees the intended change and its evidence together." } },
+              { "id": "hop5", "kind": "accent", "points": [[479, 208], [479, 248]],
+                "card": { "title": "REVIEW → GRAPH", "body": "Only an approval crosses this hop. The write becomes typed entities and edges, stamped with who decided." } },
+              { "id": "link1", "kind": "faint", "dashed": true, "noTip": true, "points": [[258, 208], [258, 248]] }
+            ]
+          }
+        ]
+      }
+      </script>
+    </wc-block-diagram>
+
+    <h2>The life of a proposal</h2>
+    <p>Five ways it can go. Pick a scenario and replay it.</p>
+
+    <wc-state-machine>
+      <script type="application/json">
+      {
+        "label": "FIG 2 · PROPOSAL LIFECYCLE",
+        "hint": "pick a scenario · step or play",
+        "caption": "Every proposal ends in one of three states. Terminal states wear a double ring; the reopen path runs through expiry.",
+        "variants": [
+          {
+            "name": "lifecycle",
+            "viewBox": [600, 212],
+            "start": { "at": [185, 10] },
+            "states": [
+              { "id": "pending", "x": 120, "y": 38, "w": 130, "h": 44, "label": "PENDING", "badgeAt": [252, 41],
+                "card": { "title": "PENDING", "body": "The proposal sits in review. The owner has not decided yet." } },
+              { "id": "applied", "x": 450, "y": 14, "w": 130, "h": 44, "label": "APPLIED", "terminal": true, "badgeAt": [583, 14],
+                "card": { "title": "APPLIED", "body": "Terminal. The change is in the graph, stamped with the decision." } },
+              { "id": "rejected", "x": 450, "y": 98, "w": 130, "h": 44, "label": "REJECTED", "terminal": true, "badgeAt": [583, 98],
+                "card": { "title": "REJECTED", "body": "Terminal. The change is refused, and the correction teaches the system." } },
+              { "id": "expired", "x": 120, "y": 160, "w": 130, "h": 44, "label": "EXPIRED", "badgeAt": [252, 161],
+                "card": { "title": "EXPIRED", "body": "The waiting period ran out. Only the owner can reopen from here." } }
+            ],
+            "transitions": [
+              { "id": "propose", "path": "M185 16 L185 30", "tip": [185, 38], "tipDir": [0, 1], "label": "propose", "labelAt": [196, 26], "labelAnchor": "start", "badgeAt": [168, 26] },
+              { "id": "approve", "path": "M248 52 L330 52 L330 36 L438 36", "tip": [446, 36], "tipDir": [1, 0], "label": "approve", "labelAt": [390, 28], "badgeAt": [340, 27] },
+              { "id": "reject", "path": "M248 68 L330 68 L330 120 L438 120", "tip": [446, 120], "tipDir": [1, 0], "label": "reject", "labelAt": [390, 112], "badgeAt": [340, 111] },
+              { "id": "expire", "path": "M185 82 L185 152", "tip": [185, 160], "tipDir": [0, 1], "label": "ttl 14 d", "labelAt": [196, 120], "labelAnchor": "start", "badgeAt": [168, 120] },
+              { "id": "reopen", "path": "M120 182 C 62 182, 62 60, 112 60", "tip": [120, 60], "tipDir": [1, 0], "label": "reopen", "labelAt": [40, 124], "badgeAt": [40, 107] }
+            ],
+            "scenarios": [
+              { "name": "approved", "steps": [
+                { "active": ["start", "propose"], "name": "propose", "log": "agent files the proposal" },
+                { "active": ["pending"], "name": "pending", "log": "proposal waits in review" },
+                { "active": ["approve"], "name": "approve", "log": "owner approves" },
+                { "active": ["applied"], "name": "applied", "log": "graph updated" } ] },
+              { "name": "rejected", "steps": [
+                { "active": ["start", "propose"], "name": "propose", "log": "agent files the proposal" },
+                { "active": ["pending"], "name": "pending", "log": "proposal waits in review" },
+                { "active": ["reject"], "name": "reject", "log": "owner rejects" },
+                { "active": ["rejected"], "name": "rejected", "log": "correction recorded via teach" } ] },
+              { "name": "expired", "steps": [
+                { "active": ["start", "propose"], "name": "propose", "log": "agent files the proposal" },
+                { "active": ["pending"], "name": "pending", "log": "the review backlog is long" },
+                { "active": ["expire"], "name": "ttl", "log": "14 days pass with no decision" },
+                { "active": ["expired"], "name": "expired", "log": "proposal expires" } ] },
+              { "name": "expired · reopened · approved", "steps": [
+                { "active": ["start", "propose"], "name": "propose", "log": "agent files the proposal" },
+                { "active": ["pending"], "name": "pending", "log": "the review backlog is long" },
+                { "active": ["expire"], "name": "ttl", "log": "14 days pass with no decision" },
+                { "active": ["expired"], "name": "expired", "log": "proposal expires" },
+                { "active": ["reopen"], "name": "reopen", "log": "owner reopens it" },
+                { "active": ["pending"], "name": "pending", "log": "back in review, same content" },
+                { "active": ["approve"], "name": "approve", "log": "owner approves" },
+                { "active": ["applied"], "name": "applied", "log": "graph updated" } ] },
+              { "name": "expired · reopened · rejected", "steps": [
+                { "active": ["start", "propose"], "name": "propose", "log": "agent files the proposal" },
+                { "active": ["pending"], "name": "pending", "log": "the review backlog is long" },
+                { "active": ["expire"], "name": "ttl", "log": "14 days pass with no decision" },
+                { "active": ["expired"], "name": "expired", "log": "proposal expires" },
+                { "active": ["reopen"], "name": "reopen", "log": "owner reopens it" },
+                { "active": ["pending"], "name": "pending", "log": "back in review, same content" },
+                { "active": ["reject"], "name": "reject", "log": "owner rejects" },
+                { "active": ["rejected"], "name": "rejected", "log": "correction recorded via teach" } ] }
+            ]
+          }
+        ]
+      }
+      </script>
+    </wc-state-machine>
+  </main>
+  <script type="module" src="../packages/woodcut/src/index.js"></script>
+</body>
+</html>

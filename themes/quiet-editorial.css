@@ -1,0 +1,30 @@
+/* Quiet Editorial bindings for woodcut — arjunkhera.com.
+ * Load after tokens.css. Fonts: Newsreader and IBM Plex Mono
+ * (Google Fonts); load them in the page head. */
+:root {
+  --wc-paper: #faf6ec;
+  --wc-ink: #211d16;
+  --wc-body: #332b20;
+  --wc-muted: #6b6150;
+  --wc-faint: #9a8f77;
+  --wc-line: #e3dbc8;
+  --wc-line-strong: #d8cdb4;
+  --wc-accent: #9a5b2d;
+  --wc-panel: #f3ecd9;
+  --wc-card: #ffffff;
+  --wc-serif: 'Newsreader', Georgia, serif;
+  --wc-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+}
+
+[data-theme='dark'] {
+  --wc-paper: #191612;
+  --wc-ink: #ece5d8;
+  --wc-body: #cfc6b4;
+  --wc-muted: #9a8f77;
+  --wc-faint: #6e6552;
+  --wc-line: #3d362b;
+  --wc-line-strong: #4a4234;
+  --wc-accent: #d99a4e;
+  --wc-panel: #2e2921;
+  --wc-card: #2e2921;
+}

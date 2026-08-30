@@ -1,0 +1,19 @@
+/* woodcut — neutral default theme.
+ * Override these variables to skin every figure at once.
+ * See themes/quiet-editorial.css for a worked example. */
+:root {
+  --wc-paper: #fcfcfa;
+  --wc-ink: #1f1f1f;
+  --wc-body: #33312c;
+  --wc-muted: #6d6a60;
+  --wc-faint: #9a9a90;
+  --wc-line: #e4e1d6;
+  --wc-line-strong: #cfc8b8;
+  --wc-accent: #4a5d7e;
+  --wc-panel: #edf0f4;
+  --wc-card: #ffffff;
+  --wc-serif: Georgia, 'Times New Roman', serif;
+  --wc-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --wc-dur-fast: 150ms;
+  --wc-dur-base: 220ms;
+}

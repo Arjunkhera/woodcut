@@ -1,0 +1,23 @@
+{
+  "name": "@arjunkhera/woodcut",
+  "version": "0.1.0",
+  "description": "A figure grammar and web-component set for explanatory diagrams in technical writing.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "diagrams",
+    "figures",
+    "web-components",
+    "svg",
+    "technical-writing"
+  ],
+  "author": "Arjun Khera",
+  "license": "MIT"
+}
