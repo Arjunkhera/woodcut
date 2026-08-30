@@ -19,9 +19,9 @@ it, so every figure in every post reads the same way.
 
 ## Status
 
-Early. Two diagram types ship today: block diagram and state
-machine. Flowchart, swimlane, and sequence follow the same frame and
-come next. Not yet on npm; consume it as a git dependency or copy
+Early. Five diagram types ship today: block diagram, state machine,
+flowchart, swimlane, and sequence — all on the one shared frame. Not
+yet on npm; consume it as a git dependency or copy
 `packages/woodcut/src/`.
 
 ## Use it in a page

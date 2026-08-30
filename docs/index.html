@@ -144,6 +144,163 @@
       }
       </script>
     </wc-state-machine>
+
+    <h2>When a proposal applies itself</h2>
+    <p>Most writes wait for review. A narrow path applies on its own.</p>
+
+    <wc-flowchart>
+      <script type="application/json">
+      {
+        "label": "FIG 3 · AUTO-APPLY DECISION",
+        "hint": "hover a shape",
+        "caption": "Two gates guard the self-applying path. Fail either one and a human sees the write first.",
+        "variants": [
+          {
+            "name": "decision",
+            "viewBox": [600, 255],
+            "nodes": [
+              { "id": "entry", "shape": "pill", "x": 16, "y": 30, "w": 134, "h": 40, "label": "proposal arrives", "kind": "plain",
+                "card": { "title": "PROPOSAL ARRIVES", "body": "Every agent write starts here, shaped as a proposal with a confidence score." } },
+              { "id": "gate1", "shape": "diamond", "x": 178, "y": 16, "w": 154, "h": 68, "label": "confidence high?", "kind": "focus",
+                "card": { "title": "CONFIDENCE GATE", "body": "The system scores its own certainty. A low score never self-applies." } },
+              { "id": "gate2", "shape": "diamond", "x": 378, "y": 16, "w": 154, "h": 68, "label": "under the cap?", "kind": "focus",
+                "card": { "title": "CAPACITY GATE", "body": "Even a confident write respects the review capacity of the owner." } },
+              { "id": "queue", "x": 180, "y": 150, "w": 150, "h": 44, "label": "QUEUE FOR REVIEW", "kind": "plain",
+                "card": { "title": "QUEUE FOR REVIEW", "body": "The safe default. A human sees the write before it lands." } },
+              { "id": "apply", "x": 380, "y": 150, "w": 150, "h": 44, "label": "AUTO-APPLY", "kind": "plain",
+                "card": { "title": "AUTO-APPLY", "body": "The narrow path. The write lands at once, and the log records the automatic decision." } },
+              { "id": "end1", "shape": "end", "x": 146, "y": 172, "label": "owner decides", "labelAt": [120, 192] },
+              { "id": "end2", "shape": "end", "x": 455, "y": 222, "label": "graph updated", "labelAt": [468, 226], "labelAnchor": "start" }
+            ],
+            "edges": [
+              { "id": "e1", "kind": "faint", "points": [[150, 50], [178, 50]] },
+              { "id": "y1", "kind": "accent", "points": [[332, 50], [378, 50]], "label": "yes", "labelAt": [351, 42] },
+              { "id": "n1", "kind": "faint", "points": [[255, 84], [255, 150]], "label": "no", "labelAt": [263, 116], "labelAnchor": "start" },
+              { "id": "y2", "kind": "accent", "points": [[455, 84], [455, 150]], "label": "yes", "labelAt": [463, 116], "labelAnchor": "start" },
+              { "id": "n2", "kind": "faint", "points": [[532, 50], [566, 50], [566, 240], [255, 240], [255, 202]], "label": "no", "labelAt": [570, 138], "labelAnchor": "start" },
+              { "id": "qe", "kind": "faint", "points": [[180, 172], [154, 172]] },
+              { "id": "ae", "kind": "faint", "points": [[455, 194], [455, 214]] }
+            ]
+          }
+        ]
+      }
+      </script>
+    </wc-flowchart>
+
+    <h2>Who does what</h2>
+    <p>The same pipeline, redrawn to answer one question: where does responsibility change hands?</p>
+
+    <wc-swimlane>
+      <script type="application/json">
+      {
+        "label": "FIG 4 · PROPOSAL FLOW BY ACTOR",
+        "hint": "time runs right · hover a box",
+        "caption": "The lane answers who; the arrow answers then what. Every lane change is a handover of responsibility.",
+        "variants": [
+          {
+            "name": "by actor",
+            "viewBox": [600, 230],
+            "lanes": [
+              { "label": "AGENT", "y1": 10, "y2": 80 },
+              { "label": "ENGRAM", "y1": 80, "y2": 150 },
+              { "label": "OWNER", "y1": 150, "y2": 220 }
+            ],
+            "nodes": [
+              { "id": "capture", "x": 90, "y": 27, "w": 86, "h": 36, "label": "CAPTURE", "kind": "focus",
+                "card": { "title": "CAPTURE", "body": "The agent saves the raw thought. No structure is needed yet." } },
+              { "id": "propose", "x": 196, "y": 27, "w": 86, "h": 36, "label": "PROPOSE", "kind": "focus",
+                "card": { "title": "PROPOSE", "body": "The agent asks for a change instead of making one." } },
+              { "id": "queue", "x": 302, "y": 97, "w": 86, "h": 36, "label": "QUEUE", "kind": "focus",
+                "card": { "title": "QUEUE", "body": "The proposal waits, with a 14-day expiry and a capacity cap." } },
+              { "id": "decide", "x": 408, "y": 167, "w": 86, "h": 36, "label": "DECIDE", "kind": "focus",
+                "card": { "title": "DECIDE", "body": "The owner approves or rejects. This is the only human step." } },
+              { "id": "apply", "x": 500, "y": 97, "w": 86, "h": 36, "label": "APPLY", "kind": "focus",
+                "card": { "title": "APPLY", "body": "The system writes the approved change into the graph." } }
+            ],
+            "edges": [
+              { "id": "s1", "kind": "accent", "points": [[176, 45], [196, 45]] },
+              { "id": "s2", "kind": "accent", "points": [[239, 63], [239, 115], [302, 115]] },
+              { "id": "s3", "kind": "accent", "points": [[345, 133], [345, 185], [408, 185]] },
+              { "id": "s4", "kind": "accent", "points": [[451, 167], [451, 115], [500, 115]] }
+            ]
+          }
+        ]
+      }
+      </script>
+    </wc-swimlane>
+
+    <h2>One capture, end to end</h2>
+    <p>Time runs down. Solid arrows call; dashed arrows answer.</p>
+
+    <wc-sequence>
+      <script type="application/json">
+      {
+        "label": "FIG 5 · CAPTURE ROUND-TRIP",
+        "hint": "hover boxes and arrows",
+        "variants": [
+          {
+            "name": "round trip",
+            "viewBox": [600, 240],
+            "lifeline": { "top": 36, "bottom": 232 },
+            "caption": "Three calls deep. The shaded bars show who is busy, and for how long.",
+            "actors": [
+              { "id": "chat", "label": "CHAT", "x": 80, "card": { "title": "CHAT", "body": "Any client surface. It holds no state; the id that returns is the only receipt." } },
+              { "id": "mcp", "label": "MCP", "x": 245, "card": { "title": "MCP", "body": "The tool layer between agents and the API. It shapes calls; it never stores." } },
+              { "id": "api", "label": "API", "x": 410, "card": { "title": "API", "body": "One validating surface. It owns dedup: same text, same id, one write." } },
+              { "id": "store", "label": "STORE", "x": 540, "card": { "title": "STORE", "body": "Content-addressed storage. It keeps every capture exactly once." } }
+            ],
+            "activations": [
+              { "actor": "chat", "y1": 62, "y2": 222 },
+              { "actor": "mcp", "y1": 62, "y2": 222 },
+              { "actor": "api", "y1": 92, "y2": 200 },
+              { "actor": "store", "y1": 122, "y2": 170 }
+            ],
+            "messages": [
+              { "id": "m1", "from": "chat", "to": "mcp", "y": 70, "label": "capture(text)",
+                "card": { "title": "CHAT → MCP", "body": "The client sends the raw text with source and time. One call, no session." } },
+              { "id": "m2", "from": "mcp", "to": "api", "y": 100, "label": "POST /captures",
+                "card": { "title": "MCP → API", "body": "The tool wraps the call as one REST request. Shape is validated here." } },
+              { "id": "m3", "from": "api", "to": "store", "y": 130, "label": "insert",
+                "card": { "title": "API → STORE", "body": "The store writes the text and its metadata in one transaction." } },
+              { "id": "m4", "from": "store", "to": "api", "y": 162, "label": "id", "kind": "return",
+                "card": { "title": "STORE → API", "body": "The store answers with the content id. The same text always gets the same id." } },
+              { "id": "m5", "from": "api", "to": "mcp", "y": 192, "label": "201 · id", "kind": "return",
+                "card": { "title": "API → MCP", "body": "The API confirms creation and returns the id to the tool layer." } },
+              { "id": "m6", "from": "mcp", "to": "chat", "y": 216, "label": "saved · id", "kind": "return",
+                "card": { "title": "MCP → CHAT", "body": "The client shows the id. The capture is safe before any structure exists." } }
+            ]
+          },
+          {
+            "name": "duplicate capture",
+            "viewBox": [600, 200],
+            "lifeline": { "top": 36, "bottom": 190 },
+            "caption": "The duplicate path is two calls shorter. The store is never touched.",
+            "actors": [
+              { "id": "chat", "label": "CHAT", "x": 80, "card": { "title": "CHAT", "body": "Any client surface. It holds no state; the id that returns is the only receipt." } },
+              { "id": "mcp", "label": "MCP", "x": 245, "card": { "title": "MCP", "body": "The tool layer between agents and the API. It shapes calls; it never stores." } },
+              { "id": "api", "label": "API", "x": 410, "card": { "title": "API", "body": "One validating surface. It owns dedup: same text, same id, one write." } },
+              { "id": "store", "label": "STORE", "x": 540, "dim": true, "card": { "title": "STORE", "body": "Content-addressed storage. On a duplicate it is never touched." } }
+            ],
+            "activations": [
+              { "actor": "chat", "y1": 62, "y2": 172 },
+              { "actor": "mcp", "y1": 62, "y2": 172 },
+              { "actor": "api", "y1": 92, "y2": 152 }
+            ],
+            "messages": [
+              { "id": "m1", "from": "chat", "to": "mcp", "y": 70, "label": "capture(text)",
+                "card": { "title": "CHAT → MCP", "body": "The client sends the raw text with source and time. One call, no session." } },
+              { "id": "m2", "from": "mcp", "to": "api", "y": 100, "label": "POST /captures",
+                "card": { "title": "MCP → API", "body": "The tool wraps the call as one REST request. Shape is validated here." } },
+              { "id": "b1", "from": "api", "to": "mcp", "y": 132, "label": "200 · id · duplicate", "kind": "return",
+                "card": { "title": "API → MCP", "body": "The text hashes to an id the store already holds. The API answers without a second write." } },
+              { "id": "b2", "from": "mcp", "to": "chat", "y": 162, "label": "saved · id", "kind": "return",
+                "card": { "title": "MCP → CHAT", "body": "The client shows the same id as the first capture. Nothing was stored twice." } }
+            ]
+          }
+        ]
+      }
+      </script>
+    </wc-sequence>
   </main>
   <script type="module" src="../packages/woodcut/src/index.js"></script>
 </body>

@@ -10,6 +10,14 @@ export class WoodcutBlockDiagram extends WoodcutFigure {
     const svg = this.s('svg', { viewBox: `0 0 ${v.viewBox[0]} ${v.viewBox[1]}` });
     const cards = {};
 
+    const lanes = v.lanes || [];
+    for (let i = 0; i < lanes.length; i++) {
+      if (i < lanes.length - 1) {
+        svg.appendChild(this.s('line', { x1: 0, y1: lanes[i].y2, x2: v.viewBox[0], y2: lanes[i].y2, class: 'lane' }));
+      }
+      svg.appendChild(this.sText(8, (lanes[i].y1 + lanes[i].y2) / 2 + 3, lanes[i].label, 'lanelbl', 'start'));
+    }
+
     for (const grp of v.groups || []) {
       svg.appendChild(this.s('rect', { x: grp.x, y: grp.y, width: grp.w, height: grp.h, rx: 8, class: 'grp' }));
       if (grp.label) {
@@ -42,10 +50,24 @@ export class WoodcutBlockDiagram extends WoodcutFigure {
     for (const n of v.nodes || []) {
       const g = this.s('g', { class: `wc-el wc-node k-${n.kind || 'plain'}` });
       g.setAttribute('data-el', n.id);
-      g.appendChild(this.s('rect', { x: n.x, y: n.y, width: n.w, height: n.h, rx: n.rx !== undefined ? n.rx : 6, class: 'body' }));
-      const cx = n.x + n.w / 2;
-      g.appendChild(this.sText(cx, n.y + (n.sub ? 22 : n.h / 2 + 4), n.label, 'lbl'));
-      if (n.sub) g.appendChild(this.sText(cx, n.y + 37, n.sub, 'sub'));
+      const shape = n.shape || 'box';
+      if (shape === 'end') {
+        g.appendChild(this.s('circle', { cx: n.x, cy: n.y, r: 4.5, class: 'enddot' }));
+        g.appendChild(this.s('circle', { cx: n.x, cy: n.y, r: 8, class: 'endring' }));
+        if (n.label) g.appendChild(this.sText(n.labelAt[0], n.labelAt[1], n.label, 'sub', n.labelAnchor || 'middle'));
+      } else {
+        if (shape === 'diamond') {
+          const cx0 = n.x + n.w / 2, cy0 = n.y + n.h / 2;
+          g.appendChild(this.s('polygon', { points: `${cx0},${n.y} ${n.x + n.w},${cy0} ${cx0},${n.y + n.h} ${n.x},${cy0}`, class: 'body' }));
+          g.appendChild(this.sText(cx0, cy0 + 3.5, n.label, 'dlbl'));
+        } else {
+          const rx = shape === 'pill' ? n.h / 2 : (n.rx !== undefined ? n.rx : 6);
+          g.appendChild(this.s('rect', { x: n.x, y: n.y, width: n.w, height: n.h, rx, class: 'body' }));
+          const cx = n.x + n.w / 2;
+          g.appendChild(this.sText(cx, n.y + (n.sub ? 22 : n.h / 2 + 4), n.label, 'lbl'));
+          if (n.sub) g.appendChild(this.sText(cx, n.y + 37, n.sub, 'sub'));
+        }
+      }
       if (n.card) { g.setAttribute('data-card-id', n.id); cards[n.id] = n.card; }
       svg.appendChild(g);
     }

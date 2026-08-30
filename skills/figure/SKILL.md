@@ -17,10 +17,13 @@ Read `GRAMMAR.md` in this repo before your first figure.
 |---|---|---|
 | Where does it live? What talks to what? | block diagram | `<wc-block-diagram>` |
 | What can happen? What are the states? | state machine | `<wc-state-machine>` |
+| Which way does it go? What decides? | flowchart | `<wc-flowchart>` |
+| Who does what? Where does responsibility move? | swimlane | `<wc-swimlane>` |
+| In what order? Who calls whom? | sequence | `<wc-sequence>` |
 
-If the question is "which way", "who", or "in what order", the type
-(flowchart, swimlane, sequence) is not in the library yet. Say so;
-do not fake one with a block diagram.
+Flowchart and swimlane use the block-diagram data shape: flowchart
+adds node shapes (`pill`, `diamond`, `end`); swimlane adds `lanes`.
+Sequence uses actors, activations, and messages.
 
 ## Step 2: apply the test
 

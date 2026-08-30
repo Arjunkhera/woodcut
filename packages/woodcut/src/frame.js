@@ -73,6 +73,13 @@ svg.diagram .wc-node .ring { fill: none; stroke: var(--wc-line-strong, #cfc8b8);
 svg.diagram .wc-node.active .ring { stroke: var(--wc-accent, #6b5640); }
 svg.diagram .wc-node .dot { fill: var(--wc-line-strong, #cfc8b8); transition: fill var(--wc-dur-base, 220ms) ${EASE}; }
 svg.diagram .wc-node.active .dot { fill: var(--wc-accent, #6b5640); }
+svg.diagram .wc-node .dlbl { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 9.5px; fill: var(--wc-ink, #1f1f1f); }
+svg.diagram .enddot { fill: var(--wc-ink, #1f1f1f); }
+svg.diagram .endring { fill: none; stroke: var(--wc-ink, #1f1f1f); stroke-width: 1; }
+svg.diagram .lane { stroke: var(--wc-line, #e4e1d6); stroke-width: 1; }
+svg.diagram .lanelbl { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 9.5px; letter-spacing: 0.12em; fill: var(--wc-faint, #9a9a90); }
+svg.diagram .lifeline { stroke: var(--wc-line-strong, #cfc8b8); stroke-width: 1; stroke-dasharray: 3 4; }
+svg.diagram .act { fill: var(--wc-panel, #f2efe6); stroke: var(--wc-line-strong, #cfc8b8); stroke-width: 1; }
 svg.diagram .wc-edge { color: var(--wc-faint, #9a9a90); }
 svg.diagram .wc-edge.k-accent, svg.diagram .wc-edge.active { color: var(--wc-accent, #6b5640); }
 svg.diagram .wc-edge.future { opacity: 0.5; }
