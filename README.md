@@ -18,6 +18,10 @@ and give every figure the same interaction chrome:
 The taste lives in [GRAMMAR.md](GRAMMAR.md). The components enforce
 it, so every figure in every post reads the same way.
 
+**[See the figure catalog →](https://arjunkhera.github.io/woodcut/docs/)**
+One worked example of every diagram type. Hover a box, expand a
+figure, replay a scenario.
+
 ## Status
 
 Early. Five diagram types ship today: block diagram, state machine,
@@ -41,9 +45,9 @@ with no build step.
 </wc-state-machine>
 ```
 
-See [docs/index.html](docs/index.html) for the catalog: one worked
-example of every diagram type, with a table of contents. To view it
-locally:
+The [figure catalog](https://arjunkhera.github.io/woodcut/docs/)
+shows one worked example of every diagram type. Its source is
+[docs/index.html](docs/index.html). To run it locally:
 
 ```bash
 python3 -m http.server 8080
