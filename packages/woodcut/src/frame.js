@@ -461,7 +461,8 @@ export class WoodcutFigure extends HTMLElement {
       const head = this.el('div', 'head');
       head.appendChild(this.el('div', 'figlabel mono', this.data.label || ''));
       const right = this.el('div', 'headright');
-      right.appendChild(this.el('div', 'hint mono', 'drag to pan · cmd + scroll to zoom'));
+      this.overlayHint = this.el('div', 'hint mono');
+      right.appendChild(this.overlayHint);
       const zout = this.el('div', 'nav'); zout.innerHTML = icon('<path d="M3 8h10"></path>', 11); zout.title = 'Zoom out (−)';
       zout.onclick = () => this.stepZoom(-1);
       this.zpct = this.el('div', 'zpct mono');
@@ -553,8 +554,17 @@ export class WoodcutFigure extends HTMLElement {
     this.svg.style.width = (nw * this.st.zoom).toFixed(1) + 'px';
     this.svg.style.height = (nh * this.st.zoom).toFixed(1) + 'px';
     if (this.zpct) this.zpct.textContent = Math.round(this.st.zoom * 100) + '%';
+    /* A fitted figure has nothing to pan to. Say so, rather than
+     * offer a drag that does nothing. */
     const vp = this.viewport;
-    if (vp) vp.classList.toggle('pannable', vp.scrollWidth > vp.clientWidth || vp.scrollHeight > vp.clientHeight);
+    if (!vp) return;
+    const pannable = vp.scrollWidth > vp.clientWidth || vp.scrollHeight > vp.clientHeight;
+    vp.classList.toggle('pannable', pannable);
+    if (this.overlayHint) {
+      this.overlayHint.textContent = pannable
+        ? 'drag to pan · cmd + scroll to zoom'
+        : 'cmd + scroll to zoom';
+    }
   }
 
   /* Zoom to a scale. `anchor` is a [clientX, clientY] point to hold still. */
