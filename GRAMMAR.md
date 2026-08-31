@@ -49,12 +49,13 @@ a hex value of its own.
    Never load-bearing: the figure must work with every card unread.
    A card never hides its own element, and never describes an element
    the current variant does not show.
-2. **Expand.** Fullscreen with zoom, scroll to pan, Esc to close,
-   and a collapsible detail rail that keeps the last hovered
-   description. Zoom runs from 10% to 600%, where 100% is the
-   natural size of the figure. Fit shows the whole diagram on both
-   axes. Cmd or Ctrl with the wheel zooms about the pointer. The
-   rail carries every section at one heading rank.
+2. **Expand.** Fullscreen with zoom, Esc to close, and a
+   collapsible detail rail that keeps the last hovered description.
+   Zoom runs from 10% to 600%, where 100% is the natural size of the
+   figure. Fit shows the whole diagram on both axes. Cmd or Ctrl
+   with the wheel zooms about the pointer. Drag pans, and so does
+   the wheel. Pan never needs a mode or a toggle. The rail carries
+   every section at one heading rank.
 3. **Variants.** A dropdown switches renditions of one figure. One
    figure, one subject. The caption stays true for the visible
    variant. The default variant carries the argument.

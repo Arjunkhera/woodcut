@@ -61,6 +61,10 @@ svg.diagram { width: 100%; height: auto; display: block; }
 .overlay { position: fixed; inset: 0; background: var(--wc-paper, #ffffff); z-index: 1000; padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; }
 .orow { display: flex; gap: 14px; flex-grow: 1; min-height: 0; align-items: stretch; }
 .oviewport { flex-grow: 1; min-width: 0; overflow: auto; border: 1px solid var(--wc-line, #ddd6c8); border-radius: 6px; scrollbar-width: thin; overscroll-behavior: contain; }
+/* The grab cursor appears only when there is something to pan to. */
+.oviewport.pannable { cursor: grab; }
+.oviewport.grabbing, .oviewport.grabbing svg.diagram [data-card-id] { cursor: grabbing; }
+.oviewport.grabbing svg.diagram { pointer-events: none; }
 .ocanvas { min-width: 100%; min-height: 100%; display: flex; padding: 12px; }
 /* Auto margins centre the drawing when it is small, and let it
  * overflow to the right when it is large. Centring with
@@ -160,6 +164,29 @@ export class WoodcutFigure extends HTMLElement {
 
     /* A fitted figure stays fitted when the window changes size. */
     this.onResize = () => { if (this.st.expanded && this.st.fitMode) this.fitZoom(); };
+
+    /* Drag to pan, the way every map and diagram viewer works. A
+     * plain wheel still scrolls, and shift with the wheel scrolls
+     * sideways. Mouse events only: a touch screen pans by itself,
+     * and pointer events would take that away. */
+    this.onPanStart = (e) => {
+      if (e.button !== 0 || !this.viewport) return;
+      const vp = this.viewport;
+      if (vp.scrollWidth <= vp.clientWidth && vp.scrollHeight <= vp.clientHeight) return;
+      this.pan = { x: e.clientX, y: e.clientY, left: vp.scrollLeft, top: vp.scrollTop };
+      vp.classList.add('grabbing');
+      e.preventDefault();
+    };
+    this.onPanMove = (e) => {
+      if (!this.pan) return;
+      this.viewport.scrollLeft = this.pan.left - (e.clientX - this.pan.x);
+      this.viewport.scrollTop = this.pan.top - (e.clientY - this.pan.y);
+    };
+    this.onPanEnd = () => {
+      if (!this.pan) return;
+      this.pan = null;
+      if (this.viewport) this.viewport.classList.remove('grabbing');
+    };
   }
 
   connectedCallback() {
@@ -434,7 +461,7 @@ export class WoodcutFigure extends HTMLElement {
       const head = this.el('div', 'head');
       head.appendChild(this.el('div', 'figlabel mono', this.data.label || ''));
       const right = this.el('div', 'headright');
-      right.appendChild(this.el('div', 'hint mono', 'cmd or ctrl + scroll to zoom'));
+      right.appendChild(this.el('div', 'hint mono', 'drag to pan · cmd + scroll to zoom'));
       const zout = this.el('div', 'nav'); zout.innerHTML = icon('<path d="M3 8h10"></path>', 11); zout.title = 'Zoom out (−)';
       zout.onclick = () => this.stepZoom(-1);
       this.zpct = this.el('div', 'zpct mono');
@@ -469,6 +496,9 @@ export class WoodcutFigure extends HTMLElement {
       this.canvas.appendChild(this.svg);
       addEventListener('keydown', this.onKey);
       this.viewport.addEventListener('wheel', this.onWheel, { passive: false });
+      this.viewport.addEventListener('mousedown', this.onPanStart);
+      addEventListener('mousemove', this.onPanMove);
+      addEventListener('mouseup', this.onPanEnd);
       addEventListener('resize', this.onResize);
       /* On a narrow screen an open rail leaves the diagram no room, so
        * it starts collapsed. The reader can open it again. */
@@ -477,9 +507,13 @@ export class WoodcutFigure extends HTMLElement {
       this.updateRail();
       this.fitZoom();
     } else {
+      this.onPanEnd();
       removeEventListener('keydown', this.onKey);
       removeEventListener('resize', this.onResize);
+      removeEventListener('mousemove', this.onPanMove);
+      removeEventListener('mouseup', this.onPanEnd);
       this.viewport.removeEventListener('wheel', this.onWheel);
+      this.viewport.removeEventListener('mousedown', this.onPanStart);
       this.svg.style.width = '';
       this.svg.style.height = '';
       this.svgPlaceholder.parentNode.replaceChild(this.svg, this.svgPlaceholder);
@@ -519,6 +553,8 @@ export class WoodcutFigure extends HTMLElement {
     this.svg.style.width = (nw * this.st.zoom).toFixed(1) + 'px';
     this.svg.style.height = (nh * this.st.zoom).toFixed(1) + 'px';
     if (this.zpct) this.zpct.textContent = Math.round(this.st.zoom * 100) + '%';
+    const vp = this.viewport;
+    if (vp) vp.classList.toggle('pannable', vp.scrollWidth > vp.clientWidth || vp.scrollHeight > vp.clientHeight);
   }
 
   /* Zoom to a scale. `anchor` is a [clientX, clientY] point to hold still. */
