@@ -34,8 +34,8 @@ Sequence uses actors, activations, and messages.
 
 ## Step 3: emit the data
 
-Embed a JSON payload in the element. See `docs/index.html` for two
-complete worked examples. The shape:
+Embed a JSON payload in the element. See `docs/index.html` for one
+worked example of every type. The shape:
 
 ```html
 <wc-state-machine>

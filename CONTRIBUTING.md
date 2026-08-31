@@ -30,9 +30,14 @@ repo never keeps its own copy of a reusable figure.
    ```
 
 2. Open `http://localhost:8080/docs/` and exercise every capability:
-   hover, expand, Esc, zoom, the rail collapse, variants, and replay.
-3. Check the dark theme with the toggle, and check
+   hover, expand, Esc, the rail collapse, variants, and replay.
+3. Test zoom in the fullscreen view. Check the buttons, `fit`,
+   cmd or ctrl with the wheel, and the keys `+`, `-`, `0`, `1`.
+   `fit` must show the whole diagram on both axes.
+4. Add the new type to the table of contents in `docs/index.html`.
+5. Check the dark theme with the toggle, and check
    `prefers-reduced-motion` (replay must jump to the final frame).
+6. Check a narrow window. The rail starts collapsed under 640 px.
 
 ## Release
 

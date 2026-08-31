@@ -7,8 +7,8 @@ components. You describe a diagram as JSON; the components draw it
 and give every figure the same interaction chrome:
 
 1. **Hover cards** — any box or arrow can explain itself.
-2. **Expand** — fullscreen with zoom, scroll-pan, Esc, and a
-   collapsible detail rail.
+2. **Expand** — fullscreen with zoom from 10% to 600%, fit,
+   cmd-scroll zoom, scroll-pan, Esc, and a collapsible detail rail.
 3. **Variants** — one figure, several renditions, one dropdown.
 4. **Replay** — scenarios step through the diagram on a numbered
    dial, with an event log. A play control animates at the reader's
@@ -40,8 +40,9 @@ with no build step.
 </wc-state-machine>
 ```
 
-See [docs/index.html](docs/index.html) for two complete figures. To
-view it locally:
+See [docs/index.html](docs/index.html) for the catalog: one worked
+example of every diagram type, with a table of contents. To view it
+locally:
 
 ```bash
 python3 -m http.server 8080
