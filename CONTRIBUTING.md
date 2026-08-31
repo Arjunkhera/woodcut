@@ -41,18 +41,37 @@ repo never keeps its own copy of a reusable figure.
 
 ## Release
 
+Releases are automatic. A merge to `main` publishes the version that
+`packages/woodcut/package.json` names, if npm does not hold it yet.
+
 1. Bump `version` in `packages/woodcut/package.json` (semver).
-2. Commit, then tag:
+2. Open a pull request and merge it to `main`.
+3. The `Release` workflow publishes to npm, tags the commit
+   `v<version>`, and writes a GitHub release.
 
-   ```bash
-   git tag v<version> && git push --tags
-   ```
+A merge that does not bump the version publishes nothing. Breaking
+changes to the data format or to token names need a major version.
 
-3. Publish (once the package is on npm):
+### One-time setup on npmjs.com
 
-   ```bash
-   cd packages/woodcut && npm publish --access public
-   ```
+The workflow holds no npm token. It proves its identity with OIDC,
+so the package must trust it. To set that up:
 
-4. Consumers upgrade by bumping the dependency. Breaking changes to
-   the data format or token names require a major version.
+1. Open the package on npmjs.com.
+2. Go to Settings, then Trusted Publisher.
+3. Choose GitHub Actions and enter:
+   - Organization or user: `Arjunkhera`
+   - Repository: `woodcut`
+   - Workflow filename: `release.yml`
+   - Environment: leave it empty.
+4. Save.
+
+### Publish by hand
+
+Do this only if the workflow is broken. It needs an npm account
+without passkey-only two-factor authentication, because the npm CLI
+cannot answer a passkey challenge.
+
+```bash
+cd packages/woodcut && npm publish --access public
+```
