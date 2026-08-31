@@ -2,6 +2,15 @@
   "name": "@arjunkhera/woodcut",
   "version": "0.2.0",
   "description": "A figure grammar and web-component set for explanatory diagrams in technical writing.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arjunkhera/woodcut.git",
+    "directory": "packages/woodcut"
+  },
+  "homepage": "https://arjunkhera.github.io/woodcut/docs/",
+  "bugs": {
+    "url": "https://github.com/Arjunkhera/woodcut/issues"
+  },
   "type": "module",
   "main": "src/index.js",
   "exports": {
