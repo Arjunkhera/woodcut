@@ -1,0 +1,90 @@
+# Publishes woodcut when a version reaches main.
+#
+# The job reads the version in packages/woodcut/package.json. If npm
+# does not hold that version yet, the job publishes it, tags the
+# commit, and writes a GitHub release. If npm already holds it, the
+# job does nothing. So a merge that does not bump the version is
+# safe.
+#
+# The job holds no npm token. It authenticates with OIDC through npm
+# trusted publishing, which the package owner configures once on
+# npmjs.com. See CONTRIBUTING.md.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to push the tag and write the release
+      id-token: write # to prove identity to npm
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm 11.5.1 or later.
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Read the version
+        id: version
+        run: |
+          V=$(node -p "require('./packages/woodcut/package.json').version")
+          echo "value=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+          echo "Version in the repository: $V"
+
+      - name: Ask npm whether that version exists
+        id: check
+        run: |
+          if npm view "@arjunkhera/woodcut@${{ steps.version.outputs.value }}" version >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "npm already holds this version. Nothing to release."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "This version is new. Releasing it."
+          fi
+
+      - name: Publish to npm
+        if: steps.check.outputs.new == 'true'
+        working-directory: packages/woodcut
+        run: npm publish --access public
+
+      - name: Tag the commit
+        if: steps.check.outputs.new == 'true'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists. Keeping it."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Write the GitHub release
+        if: steps.check.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists. Keeping it."
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
