@@ -9,25 +9,109 @@
   <link rel="stylesheet" href="../packages/woodcut/src/tokens.css">
   <link rel="stylesheet" href="../themes/quiet-editorial.css">
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; background: var(--wc-paper); color: var(--wc-body); font-family: var(--wc-serif); }
-    main { max-width: 600px; margin: 0 auto; padding: 48px 24px 96px; }
+    a { color: inherit; }
+
+    .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); align-items: start; }
+
+    /* ---------- table of contents ---------- */
+    .toc { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 40px 20px 40px 28px; border-right: 1px solid var(--wc-line); }
+    .brand { font-size: 22px; color: var(--wc-ink); margin: 0 0 2px; }
+    .brandsub { font-family: var(--wc-mono); font-size: 10px; letter-spacing: 0.12em; color: var(--wc-faint); margin: 0 0 28px; }
+    .tocgroup { font-family: var(--wc-mono); font-size: 10px; letter-spacing: 0.12em; color: var(--wc-faint); margin: 0 0 10px; }
+    .toc ul { list-style: none; margin: 0 0 28px; padding: 0; }
+    .toc li { margin: 0 0 2px; }
+    .toc a { display: block; text-decoration: none; padding: 7px 10px; border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
+    .toc a:hover { background: var(--wc-panel); }
+    .navname { display: block; font-family: var(--wc-mono); font-size: 12px; font-weight: 500; color: var(--wc-body); }
+    .navq { display: block; font-size: 12px; line-height: 1.4; color: var(--wc-faint); margin-top: 3px; }
+    .toc a.on { border-left-color: var(--wc-accent); background: var(--wc-panel); }
+    .toc a.on .navname { color: var(--wc-accent); }
+    .reflist a { font-family: var(--wc-mono); font-size: 12px; color: var(--wc-muted); }
+
+    /* ---------- content ---------- */
+    main { max-width: 640px; margin: 0 auto; padding: 48px 24px 120px; }
     h1 { font-size: 40px; font-weight: 400; line-height: 1.1; color: var(--wc-ink); margin: 0 0 8px; }
-    .sub { font-style: italic; color: var(--wc-muted); margin: 0 0 32px; }
-    h2 { font-size: 25px; font-weight: 500; color: var(--wc-ink); margin: 40px 0 8px; }
+    .sub { font-style: italic; color: var(--wc-muted); margin: 0 0 12px; }
     p { font-size: 18px; line-height: 1.68; margin: 0 0 16px; }
-    .theme { position: fixed; top: 16px; right: 16px; font-family: var(--wc-mono); font-size: 11px; border: 1px solid var(--wc-line-strong); border-radius: 8px; background: var(--wc-paper); color: var(--wc-muted); padding: 6px 12px; cursor: pointer; }
+    section { scroll-margin-top: 24px; padding-top: 56px; }
+    .sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-top: 1px solid var(--wc-line); padding-top: 14px; }
+    h2 { font-size: 25px; font-weight: 500; color: var(--wc-ink); margin: 0; }
+    .tag { font-family: var(--wc-mono); font-size: 11px; color: var(--wc-faint); }
+    .question { font-family: var(--wc-mono); font-size: 12px; color: var(--wc-accent); margin: 8px 0 0; }
+    h3 { font-size: 19px; font-weight: 500; color: var(--wc-ink); margin: 32px 0 8px; }
+
+    .theme { position: fixed; top: 16px; right: 16px; font-family: var(--wc-mono); font-size: 11px; border: 1px solid var(--wc-line-strong); border-radius: 8px; background: var(--wc-paper); color: var(--wc-muted); padding: 6px 12px; cursor: pointer; z-index: 10; }
+
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--wc-line); padding: 32px 24px 8px; }
+      .navq { display: none; }
+      .toc ul { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; }
+      .toc a { border-left: 0; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; }
+      .toc a.on { border-left-color: transparent; border-bottom-color: var(--wc-accent); }
+    }
   </style>
 </head>
 <body>
   <button class="theme" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? '' : 'dark'">light / dark</button>
-  <main>
-    <h1>woodcut</h1>
-    <p class="sub">A figure grammar for technical writing. Hover, expand, replay.</p>
 
-    <h2>Where a capture goes</h2>
-    <p>Nothing writes to the graph directly. Every capture walks the same path, and one human decision sits in the middle of it.</p>
+  <div class="shell">
+    <nav class="toc">
+      <p class="brand">woodcut</p>
+      <p class="brandsub">FIGURE CATALOG</p>
 
-    <wc-block-diagram>
+      <p class="tocgroup">TEMPLATES</p>
+      <ul>
+        <li><a href="#block-diagram" data-nav="block-diagram">
+          <span class="navname">Block diagram</span>
+          <span class="navq">Where does it live? What talks to what?</span>
+        </a></li>
+        <li><a href="#state-machine" data-nav="state-machine">
+          <span class="navname">State machine</span>
+          <span class="navq">What can happen? What are the states?</span>
+        </a></li>
+        <li><a href="#flowchart" data-nav="flowchart">
+          <span class="navname">Flowchart</span>
+          <span class="navq">Which way does it go? What decides?</span>
+        </a></li>
+        <li><a href="#swimlane" data-nav="swimlane">
+          <span class="navname">Swimlane</span>
+          <span class="navq">Who does what? Where does responsibility move?</span>
+        </a></li>
+        <li><a href="#sequence" data-nav="sequence">
+          <span class="navname">Sequence</span>
+          <span class="navq">In what order? Who calls whom?</span>
+        </a></li>
+      </ul>
+
+      <p class="tocgroup">REFERENCE</p>
+      <ul class="reflist">
+        <li><a href="../GRAMMAR.md">Grammar</a></li>
+        <li><a href="../CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="https://github.com/Arjunkhera/woodcut">Source</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <h1>woodcut</h1>
+      <p class="sub">A figure grammar for technical writing. Hover, expand, replay.</p>
+      <p>Every template below is one diagram type. Each answers one
+      question, and each carries the same chrome: hover cards, a
+      fullscreen view with zoom and a detail rail, variants, and
+      scenario replay. Pick the type by the question your prose asks.</p>
+
+      <section id="block-diagram">
+        <header class="sechead">
+          <h2>Block diagram</h2>
+          <code class="tag">&lt;wc-block-diagram&gt;</code>
+        </header>
+        <p class="question">Where does it live? What talks to what?</p>
+        <h3>Where a capture goes</h3>
+        <p>Nothing writes to the graph directly. Every capture walks the same path, and one human decision sits in the middle of it.</p>
+
+<wc-block-diagram>
       <script type="application/json">
       {
         "label": "FIG 1 · CAPTURE PIPELINE",
@@ -72,11 +156,18 @@
       }
       </script>
     </wc-block-diagram>
+      </section>
 
-    <h2>The life of a proposal</h2>
-    <p>Five ways it can go. Pick a scenario and replay it.</p>
+      <section id="state-machine">
+        <header class="sechead">
+          <h2>State machine</h2>
+          <code class="tag">&lt;wc-state-machine&gt;</code>
+        </header>
+        <p class="question">What can happen? What are the states?</p>
+        <h3>The life of a proposal</h3>
+        <p>Five ways it can go. Pick a scenario and replay it.</p>
 
-    <wc-state-machine>
+<wc-state-machine>
       <script type="application/json">
       {
         "label": "FIG 2 · PROPOSAL LIFECYCLE",
@@ -144,11 +235,18 @@
       }
       </script>
     </wc-state-machine>
+      </section>
 
-    <h2>When a proposal applies itself</h2>
-    <p>Most writes wait for review. A narrow path applies on its own.</p>
+      <section id="flowchart">
+        <header class="sechead">
+          <h2>Flowchart</h2>
+          <code class="tag">&lt;wc-flowchart&gt;</code>
+        </header>
+        <p class="question">Which way does it go? What decides?</p>
+        <h3>When a proposal applies itself</h3>
+        <p>Most writes wait for review. A narrow path applies on its own.</p>
 
-    <wc-flowchart>
+<wc-flowchart>
       <script type="application/json">
       {
         "label": "FIG 3 · AUTO-APPLY DECISION",
@@ -186,11 +284,18 @@
       }
       </script>
     </wc-flowchart>
+      </section>
 
-    <h2>Who does what</h2>
-    <p>The same pipeline, redrawn to answer one question: where does responsibility change hands?</p>
+      <section id="swimlane">
+        <header class="sechead">
+          <h2>Swimlane</h2>
+          <code class="tag">&lt;wc-swimlane&gt;</code>
+        </header>
+        <p class="question">Who does what? Where does responsibility move?</p>
+        <h3>Who does what</h3>
+        <p>The same pipeline, redrawn to answer one question: where does responsibility change hands?</p>
 
-    <wc-swimlane>
+<wc-swimlane>
       <script type="application/json">
       {
         "label": "FIG 4 · PROPOSAL FLOW BY ACTOR",
@@ -228,11 +333,18 @@
       }
       </script>
     </wc-swimlane>
+      </section>
 
-    <h2>One capture, end to end</h2>
-    <p>Time runs down. Solid arrows call; dashed arrows answer.</p>
+      <section id="sequence">
+        <header class="sechead">
+          <h2>Sequence</h2>
+          <code class="tag">&lt;wc-sequence&gt;</code>
+        </header>
+        <p class="question">In what order? Who calls whom?</p>
+        <h3>One capture, end to end</h3>
+        <p>Time runs down. Solid arrows call; dashed arrows answer.</p>
 
-    <wc-sequence>
+<wc-sequence>
       <script type="application/json">
       {
         "label": "FIG 5 · CAPTURE ROUND-TRIP",
@@ -301,7 +413,25 @@
       }
       </script>
     </wc-sequence>
-  </main>
+      </section>
+    </main>
+  </div>
+
   <script type="module" src="../packages/woodcut/src/index.js"></script>
+  <script>
+    /* Mark the template the reader is looking at. The section that
+     * last crossed a line near the top of the window wins. */
+    const sections = [...document.querySelectorAll('section[id]')];
+    const links = new Map([...document.querySelectorAll('[data-nav]')].map((a) => [a.dataset.nav, a]));
+    const markCurrent = () => {
+      const line = innerHeight * 0.25;
+      let cur = sections[0];
+      for (const s of sections) if (s.getBoundingClientRect().top <= line) cur = s;
+      for (const [id, a] of links) a.classList.toggle('on', id === cur.id);
+    };
+    addEventListener('scroll', markCurrent, { passive: true });
+    addEventListener('resize', markCurrent);
+    markCurrent();
+  </script>
 </body>
 </html>

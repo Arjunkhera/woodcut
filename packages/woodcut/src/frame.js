@@ -10,7 +10,16 @@
 
 const EASE = 'cubic-bezier(.23, 1, .32, 1)';
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const ZOOMS = [1, 1.4, 1.8, 2.2];
+
+/*
+ * Zoom is a free scale, not an index. 100% draws the diagram at the
+ * natural size of its viewBox. The buttons walk this ladder; the
+ * wheel and the trackpad pinch move between the stops.
+ */
+const ZOOM_STOPS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 1.8, 2.2, 3, 4];
+const ZOOM_MIN = 0.1;
+const ZOOM_MAX = 6;
+const clampZoom = (z) => Math.max(ZOOM_MIN, Math.min(z, ZOOM_MAX));
 
 const STYLE = `
 :host { display: block; font-family: var(--wc-serif, Georgia, serif); color: var(--wc-ink, #1f1f1f); }
@@ -51,16 +60,28 @@ svg.diagram { width: 100%; height: auto; display: block; }
 .footnote { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10.5px; color: var(--wc-faint, #9a9a90); padding: 0 2px 12px 2px; line-height: 1.6; }
 .overlay { position: fixed; inset: 0; background: var(--wc-paper, #ffffff); z-index: 1000; padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; }
 .orow { display: flex; gap: 14px; flex-grow: 1; min-height: 0; align-items: stretch; }
-.oviewport { flex-grow: 1; min-width: 0; overflow: auto; border: 1px solid var(--wc-line, #ddd6c8); border-radius: 6px; scrollbar-width: thin; }
-.rail { width: 220px; flex-shrink: 0; border-left: 2px solid var(--wc-line, #ddd6c8); padding-left: 14px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
-.railhead { display: flex; justify-content: space-between; align-items: center; }
+.oviewport { flex-grow: 1; min-width: 0; overflow: auto; border: 1px solid var(--wc-line, #ddd6c8); border-radius: 6px; scrollbar-width: thin; overscroll-behavior: contain; }
+.ocanvas { min-width: 100%; min-height: 100%; display: flex; padding: 12px; }
+/* Auto margins centre the drawing when it is small, and let it
+ * overflow to the right when it is large. Centring with
+ * justify-content would clip the left edge out of scroll reach. */
+.oviewport svg.diagram { flex-shrink: 0; margin: auto; }
+.rail { width: 232px; flex-shrink: 0; border-left: 2px solid var(--wc-line, #ddd6c8); padding-left: 14px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.railtop { display: flex; justify-content: flex-end; }
+.sect { display: flex; flex-direction: column; gap: 7px; }
 .railtag { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: var(--wc-muted, #6d6a60); }
 .railt { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10.5px; font-weight: 500; letter-spacing: 0.12em; color: var(--wc-accent, #6b5640); }
 .railb { font-size: 13.5px; line-height: 1.5; color: var(--wc-body, #33312c); }
 .railmin { width: 28px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
 .dash { cursor: pointer; padding: 2px; color: var(--wc-faint, #9a9a90); }
-.zpct { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 11px; color: var(--wc-muted, #6d6a60); width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+.zpct { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 11px; color: var(--wc-muted, #6d6a60); width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
 .fitbtn { width: auto; padding: 0 8px; font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10px; }
+.inoverlay .log { display: none; }
+.inoverlay .controls { padding: 4px 2px 0 2px; }
+@media (max-width: 640px) {
+  .overlay { padding: 16px 12px; }
+  .rail { width: 180px; }
+}
 svg.diagram [data-card-id] { cursor: help; }
 svg.diagram .wc-el { transition: opacity var(--wc-dur-base, 220ms) ${EASE}; }
 svg.diagram .wc-el.future { opacity: 0.55; }
@@ -112,10 +133,33 @@ export class WoodcutFigure extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.st = { variant: 0, step: 1, playing: false, expanded: false, railOpen: true, zoom: 0, detail: null };
+    this.st = { variant: 0, step: 1, playing: false, expanded: false, railOpen: true, zoom: 1, fitMode: true, detail: null };
     this.timer = null;
     this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.onKey = (e) => { if (e.key === 'Escape') this.setExpanded(false); };
+
+    this.onKey = (e) => {
+      if (!this.st.expanded) return;
+      if (e.key === 'Escape') { this.setExpanded(false); return; }
+      if (e.key === '0') { this.fitZoom(); return; }
+      if (e.key === '1') { this.setZoom(1); return; }
+      if (e.key === '+' || e.key === '=') { this.stepZoom(1); return; }
+      if (e.key === '-' || e.key === '_') { this.stepZoom(-1); }
+    };
+
+    /* Cmd/Ctrl + wheel zooms, and so does a trackpad pinch, which the
+     * browser reports as a wheel event with ctrlKey set. A plain
+     * wheel still scrolls the viewport to pan. */
+    this.onWheel = (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16;
+      else if (e.deltaMode === 2) dy *= 400;
+      this.setZoom(this.st.zoom * Math.exp(-dy / 180), [e.clientX, e.clientY]);
+    };
+
+    /* A fitted figure stays fitted when the window changes size. */
+    this.onResize = () => { if (this.st.expanded && this.st.fitMode) this.fitZoom(); };
   }
 
   connectedCallback() {
@@ -127,6 +171,7 @@ export class WoodcutFigure extends HTMLElement {
   disconnectedCallback() {
     this.stopPlay();
     removeEventListener('keydown', this.onKey);
+    removeEventListener('resize', this.onResize);
   }
 
   /* Subclasses implement: return an <svg class="diagram"> for one variant. */
@@ -165,20 +210,11 @@ export class WoodcutFigure extends HTMLElement {
     if (variants.length > 1) pickers.push({ label: 'VIEW', get: () => this.st.variant, opts: variants.map((v) => v.name), set: (i) => this.setVariant(i) });
     this.svgHolder = this.el('div', 'svgwrap');
     if (this.scenariosOf(0).length > 1) pickers.push({ label: 'SCENARIO', get: () => this.st.scenario || 0, opts: this.scenariosOf(this.st.variant).map((s) => s.name), set: (i) => this.setScenario(i) });
-    if (pickers.length || this.scenariosOf(this.st.variant).length) {
+    if (pickers.length) {
       const row = this.el('div', 'variantrow');
       for (const p of pickers) {
         row.appendChild(this.el('div', 'klabel mono', p.label));
         row.appendChild(this.select(p));
-      }
-      if (this.scenariosOf(this.st.variant).length) {
-        const spacer = this.el('div'); spacer.style.flexGrow = '1';
-        row.appendChild(spacer);
-        this.playBtn = this.el('div', 'iconbtn');
-        this.playBtn.title = 'Replay the scenario';
-        this.playBtn.innerHTML = PLAY_ICON;
-        this.playBtn.onclick = () => this.togglePlay();
-        row.appendChild(this.playBtn);
       }
       root.appendChild(row);
     }
@@ -226,6 +262,11 @@ export class WoodcutFigure extends HTMLElement {
     this.svg = this.buildSvg(this.variantData);
     this.svg.classList.add('diagram');
     this.svgHolder.insertBefore(this.svg, this.card);
+    /* A rebuild while expanded keeps the drawing in the overlay. */
+    if (this.st.expanded && this.canvas) {
+      this.canvas.appendChild(this.svg);
+      if (this.st.fitMode) this.fitZoom(); else this.applyZoom();
+    }
     this.wireCards(this.svg);
     this.captionEl.textContent = this.variantData.caption || this.data.caption || '';
     this.renderControls();
@@ -271,6 +312,7 @@ export class WoodcutFigure extends HTMLElement {
 
   renderControls() {
     this.controlsHost.innerHTML = '';
+    this.playBtn = null;
     if (!this.scenario) return;
     const row = this.el('div', 'controls');
     this.prevBtn = this.el('div', 'nav'); this.prevBtn.innerHTML = PREV_ICON; this.prevBtn.title = 'Previous step';
@@ -283,8 +325,14 @@ export class WoodcutFigure extends HTMLElement {
       pip.onclick = () => this.setStep(i);
       this.dial.appendChild(pip);
     }
+    /* The play control rides with the dial, so it follows the step
+     * controls into the fullscreen overlay. */
+    this.playBtn = this.el('div', 'iconbtn');
+    this.playBtn.title = 'Replay the scenario';
+    this.playBtn.innerHTML = PLAY_ICON;
+    this.playBtn.onclick = () => this.togglePlay();
     this.stepName = this.el('div', 'stepname mono');
-    row.append(this.prevBtn, this.dial, this.nextBtn, this.stepName);
+    row.append(this.prevBtn, this.dial, this.nextBtn, this.playBtn, this.stepName);
     this.controlsHost.appendChild(row);
     this.logEl = this.el('div', 'log');
     this.controlsHost.appendChild(this.logEl);
@@ -386,13 +434,14 @@ export class WoodcutFigure extends HTMLElement {
       const head = this.el('div', 'head');
       head.appendChild(this.el('div', 'figlabel mono', this.data.label || ''));
       const right = this.el('div', 'headright');
-      const zout = this.el('div', 'nav'); zout.innerHTML = icon('<path d="M3 8h10"></path>', 11); zout.title = 'Zoom out';
-      zout.onclick = () => this.setZoom(this.st.zoom - 1);
+      right.appendChild(this.el('div', 'hint mono', 'cmd or ctrl + scroll to zoom'));
+      const zout = this.el('div', 'nav'); zout.innerHTML = icon('<path d="M3 8h10"></path>', 11); zout.title = 'Zoom out (−)';
+      zout.onclick = () => this.stepZoom(-1);
       this.zpct = this.el('div', 'zpct mono');
-      const zin = this.el('div', 'nav'); zin.innerHTML = icon('<path d="M8 3v10M3 8h10"></path>', 11); zin.title = 'Zoom in';
-      zin.onclick = () => this.setZoom(this.st.zoom + 1);
-      const fit = this.el('div', 'nav fitbtn', 'fit'); fit.title = 'Fit';
-      fit.onclick = () => this.setZoom(0);
+      const zin = this.el('div', 'nav'); zin.innerHTML = icon('<path d="M8 3v10M3 8h10"></path>', 11); zin.title = 'Zoom in (+)';
+      zin.onclick = () => this.stepZoom(1);
+      const fit = this.el('div', 'nav fitbtn', 'fit'); fit.title = 'Fit the whole diagram (0)';
+      fit.onclick = () => this.fitZoom();
       const close = this.el('div', 'iconbtn'); close.innerHTML = CLOSE_ICON; close.title = 'Close (Esc)';
       close.onclick = () => this.setExpanded(false);
       right.append(zout, this.zpct, zin, fit, close);
@@ -400,6 +449,8 @@ export class WoodcutFigure extends HTMLElement {
       this.overlay.appendChild(head);
       const row = this.el('div', 'orow');
       this.viewport = this.el('div', 'oviewport');
+      this.canvas = this.el('div', 'ocanvas');
+      this.viewport.appendChild(this.canvas);
       row.appendChild(this.viewport);
       this.railHost = this.el('div');
       this.railHost.style.display = 'contents';
@@ -409,34 +460,99 @@ export class WoodcutFigure extends HTMLElement {
         const c = this.controlsHost;
         this.controlsPlaceholder = document.createComment('controls');
         c.parentNode.insertBefore(this.controlsPlaceholder, c);
+        c.classList.add('inoverlay');
         this.overlay.appendChild(c);
       }
       this.shadowRoot.appendChild(this.overlay);
       this.svgPlaceholder = document.createComment('svg');
       this.svg.parentNode.insertBefore(this.svgPlaceholder, this.svg);
-      this.viewport.appendChild(this.svg);
+      this.canvas.appendChild(this.svg);
       addEventListener('keydown', this.onKey);
-      this.setZoom(this.st.zoom);
+      this.viewport.addEventListener('wheel', this.onWheel, { passive: false });
+      addEventListener('resize', this.onResize);
+      /* On a narrow screen an open rail leaves the diagram no room, so
+       * it starts collapsed. The reader can open it again. */
+      if (innerWidth < 640) this.st.railOpen = false;
+      /* The rail takes its width first, so fit measures the real viewport. */
       this.updateRail();
+      this.fitZoom();
     } else {
       removeEventListener('keydown', this.onKey);
+      removeEventListener('resize', this.onResize);
+      this.viewport.removeEventListener('wheel', this.onWheel);
       this.svg.style.width = '';
+      this.svg.style.height = '';
       this.svgPlaceholder.parentNode.replaceChild(this.svg, this.svgPlaceholder);
       if (this.controlsPlaceholder) {
+        this.controlsHost.classList.remove('inoverlay');
         this.controlsPlaceholder.parentNode.replaceChild(this.controlsHost, this.controlsPlaceholder);
         this.controlsPlaceholder = null;
       }
       this.overlay.remove();
       this.overlay = null;
+      this.canvas = null;
+      this.viewport = null;
     }
   }
 
-  setZoom(i) {
-    this.st.zoom = Math.max(0, Math.min(i, ZOOMS.length - 1));
+  /* ---------- zoom ---------- */
+
+  /* The drawing size of the current variant, in viewBox units. */
+  naturalSize() {
+    const vb = (this.svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    const w = vb[2] > 0 ? vb[2] : 600;
+    const h = vb[3] > 0 ? vb[3] : 400;
+    return [w, h];
+  }
+
+  /* The largest scale that still shows the whole diagram. */
+  fitScale() {
+    const [nw, nh] = this.naturalSize();
+    const box = this.viewport.getBoundingClientRect();
+    const availW = Math.max(40, box.width - 28);
+    const availH = Math.max(40, box.height - 28);
+    return clampZoom(Math.min(availW / nw, availH / nh));
+  }
+
+  applyZoom() {
+    const [nw, nh] = this.naturalSize();
+    this.svg.style.width = (nw * this.st.zoom).toFixed(1) + 'px';
+    this.svg.style.height = (nh * this.st.zoom).toFixed(1) + 'px';
+    if (this.zpct) this.zpct.textContent = Math.round(this.st.zoom * 100) + '%';
+  }
+
+  /* Zoom to a scale. `anchor` is a [clientX, clientY] point to hold still. */
+  setZoom(scale, anchor) {
+    if (!this.overlay) { this.st.zoom = clampZoom(scale); return; }
+    const before = this.svg.getBoundingClientRect();
+    const ax = anchor ? anchor[0] : before.left + before.width / 2;
+    const ay = anchor ? anchor[1] : before.top + before.height / 2;
+    const fx = before.width ? (ax - before.left) / before.width : 0.5;
+    const fy = before.height ? (ay - before.top) / before.height : 0.5;
+    this.st.zoom = clampZoom(scale);
+    this.st.fitMode = false;
+    this.applyZoom();
+    const after = this.svg.getBoundingClientRect();
+    this.viewport.scrollLeft += after.left + fx * after.width - ax;
+    this.viewport.scrollTop += after.top + fy * after.height - ay;
+  }
+
+  /* Walk the ladder one stop, and keep going past its ends. */
+  stepZoom(dir) {
+    const cur = this.st.zoom;
+    const next = dir > 0
+      ? ZOOM_STOPS.find((z) => z > cur + 0.001)
+      : [...ZOOM_STOPS].reverse().find((z) => z < cur - 0.001);
+    this.setZoom(next === undefined ? cur * (dir > 0 ? 1.25 : 0.8) : next);
+  }
+
+  fitZoom() {
     if (!this.overlay) return;
-    const base = this.viewport.getBoundingClientRect().width - 2;
-    this.svg.style.width = Math.round(base * ZOOMS[this.st.zoom]) + 'px';
-    this.zpct.textContent = Math.round(ZOOMS[this.st.zoom] * 100) + '%';
+    this.st.zoom = this.fitScale();
+    this.st.fitMode = true;
+    this.applyZoom();
+    this.viewport.scrollLeft = (this.viewport.scrollWidth - this.viewport.clientWidth) / 2;
+    this.viewport.scrollTop = (this.viewport.scrollHeight - this.viewport.clientHeight) / 2;
   }
 
   updateRail() {
@@ -451,23 +567,34 @@ export class WoodcutFigure extends HTMLElement {
       return;
     }
     const rail = this.el('div', 'rail');
-    const head = this.el('div', 'railhead');
-    head.appendChild(this.el('div', 'railtag', 'DETAIL'));
+
+    /* The collapse control sits above both sections, so DETAIL and
+     * EVENTS read as two headings of the same rank. */
+    const top = this.el('div', 'railtop');
     const dash = this.el('div', 'dash'); dash.title = 'Hide the rail';
     dash.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6h8"></path></svg>';
     dash.onclick = () => { this.st.railOpen = false; this.updateRail(); };
-    head.appendChild(dash);
-    rail.appendChild(head);
-    rail.appendChild(this.el('div', 'railt', this.st.detail ? this.st.detail.title : '—'));
-    rail.appendChild(this.el('div', 'railb', this.st.detail ? this.st.detail.body : 'Hover any element to read about it.'));
+    top.appendChild(dash);
+    rail.appendChild(top);
+
+    const detail = this.el('div', 'sect');
+    detail.appendChild(this.el('div', 'railtag', 'DETAIL'));
+    detail.appendChild(this.el('div', 'rule'));
+    detail.appendChild(this.el('div', 'railt', this.st.detail ? this.st.detail.title : '—'));
+    detail.appendChild(this.el('div', 'railb', this.st.detail ? this.st.detail.body : 'Hover any element to read about it.'));
+    rail.appendChild(detail);
+
     if (this.scenario) {
-      rail.appendChild(this.el('div', 'railtag', 'EVENTS'));
+      const events = this.el('div', 'sect');
+      events.appendChild(this.el('div', 'railtag', 'EVENTS'));
+      events.appendChild(this.el('div', 'rule'));
       for (let i = 0; i < this.st.step; i++) {
         const row = this.el('div', 'logrow' + (i === this.st.step - 1 ? ' cur' : ''));
         row.appendChild(this.el('div', 'n', String(i + 1).padStart(2, '0')));
         row.appendChild(this.el('div', 'x', this.scenario.steps[i].log || ''));
-        rail.appendChild(row);
+        events.appendChild(row);
       }
+      rail.appendChild(events);
     }
     this.railHost.appendChild(rail);
   }

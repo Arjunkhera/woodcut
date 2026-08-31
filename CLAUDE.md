@@ -34,7 +34,7 @@ numbered steps for procedures.
 
 ## Roadmap notes
 
-1. Published: `@arjunkhera/woodcut` on npm (v0.1.0); the catalog is
+1. Published: `@arjunkhera/woodcut` on npm (v0.2.0); the catalog is
    live at arjunkhera.github.io/woodcut/docs/.
 2. A Claude Code plugin wrapper is deferred until someone asks for a
    one-command install.
