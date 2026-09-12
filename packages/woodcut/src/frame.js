@@ -141,23 +141,23 @@ export class WoodcutFigure extends HTMLElement {
     this.timer = null;
     this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    /* Holding +, -, 1 or 0 repeats the keydown at OS repeat rate, the
-     * same way a fast wheel gesture repeats onWheel, and
-     * stepZoom/setZoom/fitZoom force the same layout read that
-     * batching exists to bound. Batch the same way: the ladder step
-     * for +/- is cheap and runs on every event, so this.st.zoom stays
-     * current; the DOM commit that follows runs once per frame. Fit
-     * and "reset to 100%" have nothing to accumulate, so the whole
-     * call is what gets deferred. */
+    /* Holding +, -, 1 or 0 repeats the keydown at OS repeat rate.
+     * A fast wheel gesture repeats onWheel the same way.
+     * Each of stepZoom, setZoom and fitZoom forces a layout read.
+     * Batching bounds that cost, the way it already does for onWheel.
+     * Each key updates this.st.zoom and this.st.fitMode right away.
+     * Only the DOM write waits for the next frame.
+     * This keeps state live for a later key in the same frame.
+     * It also keeps the layout work to one commit per frame. */
     this.keyZoomRaf = null;
     this.keyZoomCommit = null;
     this.onKey = (e) => {
       if (!this.st.expanded) return;
       if (e.key === 'Escape') { this.setExpanded(false); return; }
-      if (e.key === '0') { this.queueKeyZoom(() => this.fitZoom()); return; }
-      if (e.key === '1') { this.queueKeyZoom(() => this.setZoom(1)); return; }
-      if (e.key === '+' || e.key === '=') { this.st.zoom = clampZoom(this.nextZoomStop(1)); this.queueKeyZoom(() => this.setZoom(this.st.zoom)); return; }
-      if (e.key === '-' || e.key === '_') { this.st.zoom = clampZoom(this.nextZoomStop(-1)); this.queueKeyZoom(() => this.setZoom(this.st.zoom)); }
+      if (e.key === '0') { this.queueFit(); return; }
+      if (e.key === '1') { this.queueZoomTo(1); return; }
+      if (e.key === '+' || e.key === '=') { this.queueZoomTo(this.nextZoomStop(1)); return; }
+      if (e.key === '-' || e.key === '_') { this.queueZoomTo(this.nextZoomStop(-1)); }
     };
 
     /* Cmd/Ctrl + wheel zooms, and so does a trackpad pinch, which the
@@ -177,6 +177,11 @@ export class WoodcutFigure extends HTMLElement {
       if (e.deltaMode === 1) dy *= 16;
       else if (e.deltaMode === 2) dy *= 400;
       this.st.zoom = clampZoom(this.st.zoom * Math.exp(-dy / 180));
+      /* Keep fitMode live too, and drop a queued keyboard commit.
+       * A resize or a key mid-gesture should see this gesture, not a
+       * stale one. */
+      this.st.fitMode = false;
+      this.cancelKeyZoom();
       this.wheelAnchor = [e.clientX, e.clientY];
       if (this.wheelRaf != null) return;
       this.wheelRaf = requestAnimationFrame(() => {
@@ -320,9 +325,10 @@ export class WoodcutFigure extends HTMLElement {
   /* ---------- diagram ---------- */
 
   rebuildDiagram() {
-    /* A new SVG makes any queued wheel-zoom's saved anchor point
-     * meaningless. Drop it, and drop a queued keyboard-zoom commit
-     * too, rather than let either land against the new drawing. */
+    /* A new SVG makes a queued wheel-zoom's saved anchor point
+     * meaningless. Drop it.
+     * A queued keyboard-zoom commit would only redo work this
+     * function already does below. Drop that too. */
     this.cancelWheelZoom();
     this.cancelKeyZoom();
     if (this.svg) this.svg.remove();
@@ -622,10 +628,10 @@ export class WoodcutFigure extends HTMLElement {
     if (this.resizeRaf != null) { cancelAnimationFrame(this.resizeRaf); this.resizeRaf = null; }
   }
 
-  /* Queues one keyboard-zoom commit for the next frame. A held key
-   * can call this many times before that frame fires; each call just
-   * replaces the pending commit, and the frame itself is scheduled
-   * only once. */
+  /* Queues one keyboard-zoom commit for the next frame.
+   * A held key can call this many times before that frame fires.
+   * Each call replaces the pending commit.
+   * The frame itself is scheduled only once. */
   queueKeyZoom(commit) {
     this.keyZoomCommit = commit;
     if (this.keyZoomRaf != null) return;
@@ -637,6 +643,31 @@ export class WoodcutFigure extends HTMLElement {
 
   cancelKeyZoom() {
     if (this.keyZoomRaf != null) { cancelAnimationFrame(this.keyZoomRaf); this.keyZoomRaf = null; }
+    this.keyZoomCommit = null;
+  }
+
+  /* Eagerly applies a plain zoom target to state, then queues the DOM
+   * commit for it. A later key in the same unflushed frame then reads
+   * a live target, not a stale one. Skips the commit when the target
+   * is already on screen. */
+  queueZoomTo(target) {
+    const next = clampZoom(target);
+    if (this.keyZoomRaf == null && next === this.st.zoom && !this.st.fitMode) return;
+    this.cancelWheelZoom();
+    this.st.zoom = next;
+    this.st.fitMode = false;
+    this.queueKeyZoom(() => this.setZoom(this.st.zoom));
+  }
+
+  /* Eagerly fits, then queues the DOM commit for it. A later key in
+   * the same unflushed frame then reads a live target, not a stale
+   * one. */
+  queueFit() {
+    this.cancelWheelZoom();
+    this.cancelResize();
+    this.st.zoom = this.fitScale();
+    this.st.fitMode = true;
+    this.queueKeyZoom(() => this.applyFit());
   }
 
   /* Zoom to a scale. `anchor` is a [clientX, clientY] point to hold still. */
@@ -678,6 +709,12 @@ export class WoodcutFigure extends HTMLElement {
     this.cancelKeyZoom();
     this.st.zoom = this.fitScale();
     this.st.fitMode = true;
+    this.applyFit();
+  }
+
+  /* The DOM-writing half of fitZoom. Use this only when the caller
+   * has already set this.st.zoom and this.st.fitMode itself. */
+  applyFit() {
     this.applyZoom();
     this.viewport.scrollLeft = (this.viewport.scrollWidth - this.viewport.clientWidth) / 2;
     this.viewport.scrollTop = (this.viewport.scrollHeight - this.viewport.clientHeight) / 2;
