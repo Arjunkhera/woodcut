@@ -152,18 +152,40 @@ export class WoodcutFigure extends HTMLElement {
 
     /* Cmd/Ctrl + wheel zooms, and so does a trackpad pinch, which the
      * browser reports as a wheel event with ctrlKey set. A plain
-     * wheel still scrolls the viewport to pan. */
+     * wheel still scrolls the viewport to pan.
+     *
+     * A pinch or a fast scroll can fire tens of wheel events a
+     * second. setZoom forces a layout read, so applying every event
+     * would thrash layout at input speed. The zoom number updates on
+     * every event. The DOM work runs once, in one animation frame. */
+    this.wheelAnchor = null;
+    this.wheelRaf = null;
     this.onWheel = (e) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       let dy = e.deltaY;
       if (e.deltaMode === 1) dy *= 16;
       else if (e.deltaMode === 2) dy *= 400;
-      this.setZoom(this.st.zoom * Math.exp(-dy / 180), [e.clientX, e.clientY]);
+      this.st.zoom = clampZoom(this.st.zoom * Math.exp(-dy / 180));
+      this.wheelAnchor = [e.clientX, e.clientY];
+      if (this.wheelRaf != null) return;
+      this.wheelRaf = requestAnimationFrame(() => {
+        this.wheelRaf = null;
+        this.setZoom(this.st.zoom, this.wheelAnchor);
+      });
     };
 
-    /* A fitted figure stays fitted when the window changes size. */
-    this.onResize = () => { if (this.st.expanded && this.st.fitMode) this.fitZoom(); };
+    /* A fitted figure stays fitted when the window changes size.
+     * Batched the same way, so a burst of resize events costs one
+     * reflow per frame, not one per event. */
+    this.resizeRaf = null;
+    this.onResize = () => {
+      if (this.resizeRaf != null) return;
+      this.resizeRaf = requestAnimationFrame(() => {
+        this.resizeRaf = null;
+        if (this.st.expanded && this.st.fitMode) this.fitZoom();
+      });
+    };
 
     /* Drag to pan, the way every map and diagram viewer works. A
      * plain wheel still scrolls, and shift with the wheel scrolls
@@ -199,6 +221,8 @@ export class WoodcutFigure extends HTMLElement {
     this.stopPlay();
     removeEventListener('keydown', this.onKey);
     removeEventListener('resize', this.onResize);
+    this.cancelWheelZoom();
+    this.cancelResize();
   }
 
   /* Subclasses implement: return an <svg class="diagram"> for one variant. */
@@ -285,6 +309,9 @@ export class WoodcutFigure extends HTMLElement {
   /* ---------- diagram ---------- */
 
   rebuildDiagram() {
+    /* A new SVG makes any queued wheel-zoom's saved anchor point
+     * meaningless, so drop it rather than aim it at the new drawing. */
+    this.cancelWheelZoom();
     if (this.svg) this.svg.remove();
     this.svg = this.buildSvg(this.variantData);
     this.svg.classList.add('diagram');
@@ -509,6 +536,8 @@ export class WoodcutFigure extends HTMLElement {
       this.fitZoom();
     } else {
       this.onPanEnd();
+      this.cancelWheelZoom();
+      this.cancelResize();
       removeEventListener('keydown', this.onKey);
       removeEventListener('resize', this.onResize);
       removeEventListener('mousemove', this.onPanMove);
@@ -567,8 +596,21 @@ export class WoodcutFigure extends HTMLElement {
     }
   }
 
+  /* Drops a queued wheel-zoom frame. Every other way to change the
+   * zoom calls this first. Otherwise that queued frame could still
+   * land a moment later and overwrite the newer change. */
+  cancelWheelZoom() {
+    if (this.wheelRaf != null) { cancelAnimationFrame(this.wheelRaf); this.wheelRaf = null; }
+    this.wheelAnchor = null;
+  }
+
+  cancelResize() {
+    if (this.resizeRaf != null) { cancelAnimationFrame(this.resizeRaf); this.resizeRaf = null; }
+  }
+
   /* Zoom to a scale. `anchor` is a [clientX, clientY] point to hold still. */
   setZoom(scale, anchor) {
+    this.cancelWheelZoom();
     if (!this.overlay) { this.st.zoom = clampZoom(scale); return; }
     const before = this.svg.getBoundingClientRect();
     const ax = anchor ? anchor[0] : before.left + before.width / 2;
@@ -594,6 +636,7 @@ export class WoodcutFigure extends HTMLElement {
 
   fitZoom() {
     if (!this.overlay) return;
+    this.cancelWheelZoom();
     this.st.zoom = this.fitScale();
     this.st.fitMode = true;
     this.applyZoom();
