@@ -141,13 +141,23 @@ export class WoodcutFigure extends HTMLElement {
     this.timer = null;
     this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    /* Holding +, -, 1 or 0 repeats the keydown at OS repeat rate, the
+     * same way a fast wheel gesture repeats onWheel, and
+     * stepZoom/setZoom/fitZoom force the same layout read that
+     * batching exists to bound. Batch the same way: the ladder step
+     * for +/- is cheap and runs on every event, so this.st.zoom stays
+     * current; the DOM commit that follows runs once per frame. Fit
+     * and "reset to 100%" have nothing to accumulate, so the whole
+     * call is what gets deferred. */
+    this.keyZoomRaf = null;
+    this.keyZoomCommit = null;
     this.onKey = (e) => {
       if (!this.st.expanded) return;
       if (e.key === 'Escape') { this.setExpanded(false); return; }
-      if (e.key === '0') { this.fitZoom(); return; }
-      if (e.key === '1') { this.setZoom(1); return; }
-      if (e.key === '+' || e.key === '=') { this.stepZoom(1); return; }
-      if (e.key === '-' || e.key === '_') { this.stepZoom(-1); }
+      if (e.key === '0') { this.queueKeyZoom(() => this.fitZoom()); return; }
+      if (e.key === '1') { this.queueKeyZoom(() => this.setZoom(1)); return; }
+      if (e.key === '+' || e.key === '=') { this.st.zoom = clampZoom(this.nextZoomStop(1)); this.queueKeyZoom(() => this.setZoom(this.st.zoom)); return; }
+      if (e.key === '-' || e.key === '_') { this.st.zoom = clampZoom(this.nextZoomStop(-1)); this.queueKeyZoom(() => this.setZoom(this.st.zoom)); }
     };
 
     /* Cmd/Ctrl + wheel zooms, and so does a trackpad pinch, which the
@@ -223,6 +233,7 @@ export class WoodcutFigure extends HTMLElement {
     removeEventListener('resize', this.onResize);
     this.cancelWheelZoom();
     this.cancelResize();
+    this.cancelKeyZoom();
   }
 
   /* Subclasses implement: return an <svg class="diagram"> for one variant. */
@@ -310,8 +321,10 @@ export class WoodcutFigure extends HTMLElement {
 
   rebuildDiagram() {
     /* A new SVG makes any queued wheel-zoom's saved anchor point
-     * meaningless, so drop it rather than aim it at the new drawing. */
+     * meaningless. Drop it, and drop a queued keyboard-zoom commit
+     * too, rather than let either land against the new drawing. */
     this.cancelWheelZoom();
+    this.cancelKeyZoom();
     if (this.svg) this.svg.remove();
     this.svg = this.buildSvg(this.variantData);
     this.svg.classList.add('diagram');
@@ -538,6 +551,7 @@ export class WoodcutFigure extends HTMLElement {
       this.onPanEnd();
       this.cancelWheelZoom();
       this.cancelResize();
+      this.cancelKeyZoom();
       removeEventListener('keydown', this.onKey);
       removeEventListener('resize', this.onResize);
       removeEventListener('mousemove', this.onPanMove);
@@ -608,9 +622,27 @@ export class WoodcutFigure extends HTMLElement {
     if (this.resizeRaf != null) { cancelAnimationFrame(this.resizeRaf); this.resizeRaf = null; }
   }
 
+  /* Queues one keyboard-zoom commit for the next frame. A held key
+   * can call this many times before that frame fires; each call just
+   * replaces the pending commit, and the frame itself is scheduled
+   * only once. */
+  queueKeyZoom(commit) {
+    this.keyZoomCommit = commit;
+    if (this.keyZoomRaf != null) return;
+    this.keyZoomRaf = requestAnimationFrame(() => {
+      this.keyZoomRaf = null;
+      this.keyZoomCommit();
+    });
+  }
+
+  cancelKeyZoom() {
+    if (this.keyZoomRaf != null) { cancelAnimationFrame(this.keyZoomRaf); this.keyZoomRaf = null; }
+  }
+
   /* Zoom to a scale. `anchor` is a [clientX, clientY] point to hold still. */
   setZoom(scale, anchor) {
     this.cancelWheelZoom();
+    this.cancelKeyZoom();
     if (!this.overlay) { this.st.zoom = clampZoom(scale); return; }
     const before = this.svg.getBoundingClientRect();
     const ax = anchor ? anchor[0] : before.left + before.width / 2;
@@ -625,18 +657,25 @@ export class WoodcutFigure extends HTMLElement {
     this.viewport.scrollTop += after.top + fy * after.height - ay;
   }
 
-  /* Walk the ladder one stop, and keep going past its ends. */
-  stepZoom(dir) {
+  /* The next stop up or down the ladder from the current zoom,
+   * continuing past its ends. */
+  nextZoomStop(dir) {
     const cur = this.st.zoom;
     const next = dir > 0
       ? ZOOM_STOPS.find((z) => z > cur + 0.001)
       : [...ZOOM_STOPS].reverse().find((z) => z < cur - 0.001);
-    this.setZoom(next === undefined ? cur * (dir > 0 ? 1.25 : 0.8) : next);
+    return next === undefined ? cur * (dir > 0 ? 1.25 : 0.8) : next;
+  }
+
+  /* Walk the ladder one stop, and keep going past its ends. */
+  stepZoom(dir) {
+    this.setZoom(this.nextZoomStop(dir));
   }
 
   fitZoom() {
     if (!this.overlay) return;
     this.cancelWheelZoom();
+    this.cancelKeyZoom();
     this.st.zoom = this.fitScale();
     this.st.fitMode = true;
     this.applyZoom();
