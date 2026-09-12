@@ -234,11 +234,25 @@ export class WoodcutFigure extends HTMLElement {
 
   disconnectedCallback() {
     this.stopPlay();
-    removeEventListener('keydown', this.onKey);
-    removeEventListener('resize', this.onResize);
+    this.teardownWindowListeners();
+  }
+
+  /* Removes every window-level listener and queued frame this figure
+   * owns, and ends any drag-to-pan in progress. The close branch of
+   * setExpanded and disconnectedCallback both call this, so a host
+   * page that detaches an expanded figure mid-drag cannot leave pan
+   * listeners on window forever. Safe to call whether or not the
+   * figure was ever expanded: onPanEnd and removeEventListener are
+   * no-ops when there is nothing to undo. */
+  teardownWindowListeners() {
+    this.onPanEnd();
+    removeEventListener('mousemove', this.onPanMove);
+    removeEventListener('mouseup', this.onPanEnd);
     this.cancelWheelZoom();
     this.cancelResize();
     this.cancelKeyZoom();
+    removeEventListener('keydown', this.onKey);
+    removeEventListener('resize', this.onResize);
   }
 
   /* Subclasses implement: return an <svg class="diagram"> for one variant. */
@@ -554,14 +568,7 @@ export class WoodcutFigure extends HTMLElement {
       this.updateRail();
       this.fitZoom();
     } else {
-      this.onPanEnd();
-      this.cancelWheelZoom();
-      this.cancelResize();
-      this.cancelKeyZoom();
-      removeEventListener('keydown', this.onKey);
-      removeEventListener('resize', this.onResize);
-      removeEventListener('mousemove', this.onPanMove);
-      removeEventListener('mouseup', this.onPanEnd);
+      this.teardownWindowListeners();
       this.viewport.removeEventListener('wheel', this.onWheel);
       this.viewport.removeEventListener('mousedown', this.onPanStart);
       this.svg.style.width = '';
