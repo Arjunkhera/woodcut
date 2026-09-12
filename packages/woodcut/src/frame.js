@@ -152,18 +152,43 @@ export class WoodcutFigure extends HTMLElement {
 
     /* Cmd/Ctrl + wheel zooms, and so does a trackpad pinch, which the
      * browser reports as a wheel event with ctrlKey set. A plain
-     * wheel still scrolls the viewport to pan. */
+     * wheel still scrolls the viewport to pan.
+     *
+     * A pinch or a fast scroll can fire tens of wheel events a
+     * second, and setZoom forces a layout read. Applying each event
+     * as it lands would thrash layout at input speed, so the cheap
+     * math runs on every event, folding into a pending scale, while
+     * the DOM work runs once per animation frame. */
+    this.wheelPending = null;
+    this.wheelRaf = null;
     this.onWheel = (e) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       let dy = e.deltaY;
       if (e.deltaMode === 1) dy *= 16;
       else if (e.deltaMode === 2) dy *= 400;
-      this.setZoom(this.st.zoom * Math.exp(-dy / 180), [e.clientX, e.clientY]);
+      const base = this.wheelPending ? this.wheelPending.scale : this.st.zoom;
+      this.wheelPending = { scale: clampZoom(base * Math.exp(-dy / 180)), anchor: [e.clientX, e.clientY] };
+      if (this.wheelRaf != null) return;
+      this.wheelRaf = requestAnimationFrame(() => {
+        this.wheelRaf = null;
+        const pending = this.wheelPending;
+        this.wheelPending = null;
+        this.setZoom(pending.scale, pending.anchor);
+      });
     };
 
-    /* A fitted figure stays fitted when the window changes size. */
-    this.onResize = () => { if (this.st.expanded && this.st.fitMode) this.fitZoom(); };
+    /* A fitted figure stays fitted when the window changes size.
+     * Batched the same way, so a burst of resize events costs one
+     * reflow per frame, not one per event. */
+    this.resizeRaf = null;
+    this.onResize = () => {
+      if (this.resizeRaf != null) return;
+      this.resizeRaf = requestAnimationFrame(() => {
+        this.resizeRaf = null;
+        if (this.st.expanded && this.st.fitMode) this.fitZoom();
+      });
+    };
 
     /* Drag to pan, the way every map and diagram viewer works. A
      * plain wheel still scrolls, and shift with the wheel scrolls
@@ -199,6 +224,8 @@ export class WoodcutFigure extends HTMLElement {
     this.stopPlay();
     removeEventListener('keydown', this.onKey);
     removeEventListener('resize', this.onResize);
+    if (this.wheelRaf != null) { cancelAnimationFrame(this.wheelRaf); this.wheelRaf = null; }
+    if (this.resizeRaf != null) { cancelAnimationFrame(this.resizeRaf); this.resizeRaf = null; }
   }
 
   /* Subclasses implement: return an <svg class="diagram"> for one variant. */
@@ -509,6 +536,9 @@ export class WoodcutFigure extends HTMLElement {
       this.fitZoom();
     } else {
       this.onPanEnd();
+      if (this.wheelRaf != null) { cancelAnimationFrame(this.wheelRaf); this.wheelRaf = null; }
+      this.wheelPending = null;
+      if (this.resizeRaf != null) { cancelAnimationFrame(this.resizeRaf); this.resizeRaf = null; }
       removeEventListener('keydown', this.onKey);
       removeEventListener('resize', this.onResize);
       removeEventListener('mousemove', this.onPanMove);
