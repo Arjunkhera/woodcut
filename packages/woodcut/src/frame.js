@@ -219,8 +219,6 @@ export class WoodcutFigure extends HTMLElement {
 
   disconnectedCallback() {
     this.stopPlay();
-    removeEventListener('keydown', this.onKey);
-    removeEventListener('resize', this.onResize);
     this.removeOverlayListeners();
   }
 
@@ -535,8 +533,6 @@ export class WoodcutFigure extends HTMLElement {
       this.fitZoom();
     } else {
       this.removeOverlayListeners();
-      removeEventListener('keydown', this.onKey);
-      removeEventListener('resize', this.onResize);
       this.svg.style.width = '';
       this.svg.style.height = '';
       this.svgPlaceholder.parentNode.replaceChild(this.svg, this.svgPlaceholder);
@@ -553,13 +549,14 @@ export class WoodcutFigure extends HTMLElement {
   }
 
   /* Removes everything setExpanded(true) attaches outside this
-   * element's own shadow tree: the window pan listeners, the
-   * viewport's wheel and mousedown listeners, and any queued zoom or
-   * resize frame. setExpanded(false) and disconnectedCallback both
-   * call this. A host page can remove an expanded figure from the
-   * DOM without collapsing it first; without this shared cleanup,
-   * the window listeners would keep the whole detached figure alive
-   * and firing for the rest of the page's life.
+   * element's own shadow tree: the window keydown, resize, and pan
+   * listeners, the viewport's wheel and mousedown listeners, and any
+   * queued zoom or resize frame. setExpanded(false) and
+   * disconnectedCallback both call this. A host page can remove an
+   * expanded figure from the DOM without collapsing it first;
+   * without this shared cleanup, the window listeners would keep
+   * the whole detached figure alive and firing for the rest of the
+   * page's life.
    *
    * Guard on this.overlay: disconnectedCallback also runs on a
    * figure that is already collapsed, where there is nothing to tear
@@ -569,6 +566,8 @@ export class WoodcutFigure extends HTMLElement {
     this.onPanEnd();
     this.cancelWheelZoom();
     this.cancelResize();
+    removeEventListener('keydown', this.onKey);
+    removeEventListener('resize', this.onResize);
     removeEventListener('mousemove', this.onPanMove);
     removeEventListener('mouseup', this.onPanEnd);
     this.viewport.removeEventListener('wheel', this.onWheel);
