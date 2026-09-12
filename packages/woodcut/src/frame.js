@@ -234,7 +234,17 @@ export class WoodcutFigure extends HTMLElement {
 
   disconnectedCallback() {
     this.stopPlay();
-    this.removeOverlayListeners();
+    /* A host page can move this element in the DOM without
+     * destroying it. A keyed-list reorder can do this. So can a
+     * router that remounts a section. Both fire disconnectedCallback,
+     * then connectedCallback, on the same instance.
+     *
+     * setExpanded(false) already calls removeOverlayListeners, and
+     * also clears this.overlay, this.canvas, and this.viewport.
+     * Reuse it here. Then a disconnect mid-drag or mid-expand leaves
+     * nothing dangling for the next connectedCallback to trip
+     * over. */
+    if (this.st.expanded) this.setExpanded(false);
   }
 
   /* Subclasses implement: return an <svg class="diagram"> for one variant. */
