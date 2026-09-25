@@ -118,6 +118,9 @@ Rules for a walkthrough:
    is the one exception to the single accent.
 7. With `reveal`, every element no step names stays hidden. Name
    every element the story needs.
+8. Give a narrated figure a definite width. Put it in the text
+   column as a block, or set its width. Inside a flex row or a
+   fit-content wrapper without a width, it collapses.
 
 ## Step 4: self-check before you finish
 

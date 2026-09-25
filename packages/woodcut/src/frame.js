@@ -131,12 +131,17 @@ svg.diagram .badge.cur { fill: var(--wc-accent, #6b5640); }
  * container is the containing block for fixed children. */
 /* div only: svg.diagram also wears .walk, and size containment on an svg
  * drops its aspect ratio, so it falls to the 150 px default height. */
-div.walk { container-type: inline-size; }
+/* Only a narrated figure is a size container. A size container does
+ * not take its width from its content, so a narrated figure needs a
+ * definite width from its page (see GRAMMAR.md). Other figures keep
+ * the layout they had before. */
+div.walk { width: 100%; }
+div.walk.narrated { container-type: inline-size; }
 .walkgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .walkgrid.solo { display: block; }
 .stagecol { min-width: 0; }
 .svgwrap:focus { outline: none; }
-.svgwrap:focus-visible { outline: 2px solid var(--wc-accent); outline-offset: 4px; border-radius: 4px; }
+.svgwrap:focus-visible { outline: 2px solid var(--wc-accent, CanvasText); outline-offset: 4px; border-radius: 4px; }
 .svgwrap svg.diagram.stepable { cursor: pointer; }
 /* The layout follows the width of the figure, not the window. Under
  * 860 px the diagram keeps the full width and the panel sits under
@@ -156,7 +161,8 @@ div.walk { container-type: inline-size; }
 .track { display: flex; flex-wrap: wrap; gap: 6px; }
 .tp { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10.5px; line-height: 1; padding: 5px 9px; border-radius: 999px; border: 1px dashed var(--wc-line-strong); background: transparent; color: var(--wc-faint); cursor: pointer; transition: background-color var(--wc-dur-fast, 150ms) ${EASE}, color var(--wc-dur-fast, 150ms) ${EASE}, border-color var(--wc-dur-fast, 150ms) ${EASE}; }
 .tp.done { border-style: solid; border-color: var(--wc-line-strong); color: var(--wc-body); background: var(--wc-paper); }
-.tp.cur { border-style: solid; border-color: var(--wc-accent); background: var(--wc-accent); color: var(--wc-paper); font-weight: 500; }
+.tp.cur { border-style: solid; border-color: var(--wc-accent, CanvasText); background: var(--wc-accent, CanvasText); color: var(--wc-paper, Canvas); font-weight: 500; }
+.tp:focus-visible { outline: 2px solid var(--wc-accent, CanvasText); outline-offset: 2px; }
 .nstep { font-size: 10.5px; letter-spacing: 0.12em; color: var(--wc-accent); }
 .nsay { display: flex; flex-direction: column; gap: 6px; }
 .ntitle { font-size: 19px; line-height: 1.25; color: var(--wc-ink); }
@@ -330,23 +336,25 @@ export class WoodcutFigure extends HTMLElement {
     };
     this.addEventListener('keydown', this.onHostKey);
 
-    /* A click on the stage moves one step forward. A drag is a pan,
+    /* In a walkthrough, a click on the stage moves one step forward. A drag is a pan,
      * not a click, so a pointer that travelled is ignored. */
     this.downAt = null;
     this.onStageDown = (e) => { this.downAt = [e.clientX, e.clientY]; };
     this.onStageClick = (e) => {
       const d = this.downAt;
       this.downAt = null;
-      if (!this.scenario || e.button !== 0) return;
+      if (!this.scenario || !this.isWalk || e.button !== 0) return;
       if (d && Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 4) return;
       this.setStep(this.st.step + 1);
     };
   }
 
-  /* Arrow keys, Home and End step the scenario. Returns true when the
+  /* Arrow keys, Home and End step a walkthrough. Returns true when the
    * key was a step key. */
   stepKey(e) {
-    if (!this.scenario || e.metaKey || e.ctrlKey || e.altKey) return false;
+    /* Walkthroughs only. A plain replay keeps its old keys: in the
+     * fullscreen view the arrows scroll a zoomed diagram. */
+    if (!this.scenario || !this.isWalk || e.metaKey || e.ctrlKey || e.altKey) return false;
     let n = null;
     if (e.key === 'ArrowRight') n = this.st.step + 1;
     else if (e.key === 'ArrowLeft') n = this.st.step - 1;
@@ -448,6 +456,16 @@ export class WoodcutFigure extends HTMLElement {
     this.walkGrid.appendChild(stageCol);
     this.narrEl = this.el('div', 'narr');
     this.narrEl.hidden = true;
+    /* The pills, the live region and the record host live as long as
+     * the figure. A step updates them in place, so a focused pill
+     * keeps focus and screen readers announce the new text. */
+    this.trackEl = this.el('div', 'track');
+    this.trackFor = null;
+    this.sayEl = this.el('div', 'nsay');
+    this.sayEl.setAttribute('aria-live', 'polite');
+    this.recHost = this.el('div');
+    this.recHost.style.display = 'contents';
+    this.narrEl.append(this.trackEl, this.sayEl, this.recHost);
     this.walkGrid.appendChild(this.narrEl);
     this.walkEl.appendChild(this.walkGrid);
     this.summaryEl = this.el('div', 'summary');
@@ -569,7 +587,7 @@ export class WoodcutFigure extends HTMLElement {
     this.playBtn = null;
     this.prevBtn = this.nextBtn = this.dial = this.stepName = this.logEl = null;
     /* The stage takes focus so the arrow keys can step it. */
-    if (this.scenario) {
+    if (this.scenario && this.isWalk) {
       this.svgHolder.tabIndex = 0;
       this.svgHolder.setAttribute('aria-label', 'Diagram. Click it or press the arrow keys to step.');
     } else {
@@ -658,6 +676,7 @@ export class WoodcutFigure extends HTMLElement {
     if (this.playBtn) this.playBtn.classList.toggle('on', this.st.playing);
     if (!this.scenario) {
       this.svg.classList.remove('walk', 'reveal', 'stepable');
+      this.svg.querySelectorAll('[data-follows]').forEach((elm) => elm.classList.remove('future', 'hidden'));
       this.renderNarration();
       return;
     }
@@ -675,7 +694,7 @@ export class WoodcutFigure extends HTMLElement {
     const before = this.lastFocus || new Set();
     this.svg.classList.toggle('walk', walk);
     this.svg.classList.toggle('reveal', reveal);
-    this.svg.classList.toggle('stepable', true);
+    this.svg.classList.toggle('stepable', walk);
     this.svg.querySelectorAll('[data-el]').forEach((elm) => {
       const id = elm.getAttribute('data-el');
       elm.classList.toggle('active', now.includes(id));
@@ -690,6 +709,14 @@ export class WoodcutFigure extends HTMLElement {
       }
     });
     this.lastFocus = focus;
+    /* A follower, such as a sequence activation bar, takes the reveal
+     * and dim state of the element it names. Walkthroughs only, so a
+     * plain replay draws it as before. */
+    this.svg.querySelectorAll('[data-follows]').forEach((elm) => {
+      const id = elm.getAttribute('data-follows');
+      elm.classList.toggle('future', walk && !seen[id]);
+      elm.classList.toggle('hidden', reveal && !seen[id]);
+    });
     this.markDenied(denied, step.deniedLabel);
     this.svg.querySelectorAll('.badge').forEach((b) => {
       const id = b.getAttribute('data-badge-for');
@@ -789,7 +816,9 @@ export class WoodcutFigure extends HTMLElement {
       const t = this.sText(0, 0, label, '', 'middle');
       g.appendChild(t);
       layer.appendChild(g);
-      const tw = t.getBBox().width || label.length * 5.6;
+      let tw = 0;
+      try { tw = t.getBBox().width; } catch (_) { /* not rendered */ }
+      tw = tw || label.length * 5.6;
       const w = tw + 12, h = 15;
       let cx = bb.x + bb.width - w / 2 + 6;
       cx = Math.max(w / 2 + 1, Math.min(cx, vbw - w / 2 - 1));
@@ -827,40 +856,63 @@ export class WoodcutFigure extends HTMLElement {
 
   renderNarration() {
     const on = this.narrated;
+    this.walkEl.classList.toggle('narrated', on);
     this.walkGrid.classList.toggle('solo', !on);
     this.narrEl.hidden = !on;
-    this.narrEl.innerHTML = '';
     this.summaryEl.innerHTML = '';
     this.summaryEl.hidden = true;
-    if (!on) return;
+    if (!on) {
+      this.trackEl.innerHTML = '';
+      this.trackFor = null;
+      this.sayEl.innerHTML = '';
+      this.recHost.innerHTML = '';
+      return;
+    }
     const steps = this.scenario.steps;
     const s = this.st.step;
     const step = steps[s - 1];
 
     /* The tracker: one pill per step, marked done, current, or to come.
-     * The border style carries the mark as well as the color. */
-    const track = this.el('div', 'track');
-    steps.forEach((st, i) => {
-      const p = this.el('button', 'tp ' + (i + 1 < s ? 'done' : i + 1 === s ? 'cur' : 'fut'), st.name || String(i + 1));
-      p.type = 'button';
-      p.title = st.title || st.name || 'Step ' + (i + 1);
+     * The border style carries the mark as well as the color. The
+     * pills are built once per scenario and updated in place. */
+    if (this.trackFor !== this.scenario) {
+      this.trackFor = this.scenario;
+      this.trackEl.innerHTML = '';
+      steps.forEach((st, i) => {
+        const p = this.el('button', 'tp', st.name || String(i + 1));
+        p.type = 'button';
+        p.title = st.title || st.name || 'Step ' + (i + 1);
+        p.onclick = () => this.setStep(i + 1);
+        this.trackEl.appendChild(p);
+      });
+    }
+    [...this.trackEl.children].forEach((p, i) => {
+      p.className = 'tp ' + (i + 1 < s ? 'done' : i + 1 === s ? 'cur' : 'fut');
       if (i + 1 === s) p.setAttribute('aria-current', 'step');
-      p.onclick = () => this.setStep(i + 1);
-      track.appendChild(p);
+      else p.removeAttribute('aria-current');
     });
-    this.narrEl.appendChild(track);
 
-    const say = this.el('div', 'nsay');
-    say.setAttribute('aria-live', 'polite');
-    say.appendChild(this.el('div', 'nstep mono', `STEP ${s} / ${steps.length}`));
-    const title = step.title || step.name;
-    if (title) say.appendChild(this.el('div', 'ntitle rise', title));
-    if (step.body) say.appendChild(this.el('div', 'nbody rise', step.body));
-    this.narrEl.appendChild(say);
+    /* One live region for the life of the figure. Only its text
+     * changes, so a screen reader announces each step. */
+    if (!this.sayEl.children.length) {
+      this.sayEl.append(this.el('div', 'nstep mono'), this.el('div', 'ntitle'), this.el('div', 'nbody'));
+    }
+    const [nstep, ntitle, nbody] = this.sayEl.children;
+    nstep.textContent = `STEP ${s} / ${steps.length}`;
+    ntitle.textContent = step.title || step.name || '';
+    nbody.textContent = step.body || '';
+    ntitle.hidden = !ntitle.textContent;
+    nbody.hidden = !nbody.textContent;
+    for (const e of [ntitle, nbody]) {
+      e.classList.remove('rise');
+      void e.offsetWidth;
+      e.classList.add('rise');
+    }
 
     const rec = this.renderRecord(step);
     this.narrEl.classList.toggle('hasrec', !!rec);
-    if (rec) this.narrEl.appendChild(rec);
+    this.recHost.innerHTML = '';
+    if (rec) this.recHost.appendChild(rec);
 
     const sum = step.summary;
     if (sum && (sum.rows || []).length) {

@@ -72,8 +72,6 @@ a hex value of its own.
    window of clickable numbers with chevrons. Steps mark the diagram
    with plain numerals, and an event log keeps one line per step. A
    play control advances at 700 ms per step and stops at the end.
-   The reader can also click the diagram to go one step forward,
-   and use the arrow keys, Home and End while the figure has focus.
 
 A new diagram type is not done until it carries all four. Extending
 `WoodcutFigure` is how it carries them.
@@ -100,9 +98,16 @@ it asks for reveal. Every diagram type supports it through the frame.
    reached stay hidden and enter on their step. A denied element
    wears a dashed danger border, and a badge may say why.
 5. **Pace.** The reader sets the pace. A walkthrough has no play
-   control, and nothing moves until the reader clicks or presses a
-   key.
-6. **Summary.** The last step may show a summary table under the
+   control, and nothing moves until the reader acts. A click on the
+   diagram goes one step forward. The arrow keys, Home and End step
+   while the figure has focus, and in the fullscreen view. A plain
+   replay keeps its dial only: there a click and the arrow keys do
+   not step.
+6. **Width.** A narrated figure takes its layout from its own
+   width, so its page must give it a definite width: a block in the
+   text column, or a set width. A figure that shrinks to fit its
+   content, such as a flex item without a width, collapses.
+7. **Summary.** The last step may show a summary table under the
    figure. Its rows enter one after another.
 
 ## Diagram grammar
