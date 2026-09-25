@@ -129,7 +129,9 @@ svg.diagram .badge.cur { fill: var(--wc-accent, #6b5640); }
 /* ---------- walkthrough: narration beside or under the stage ----------
  * .walk is the size container. It must never hold the overlay: a size
  * container is the containing block for fixed children. */
-.walk { container-type: inline-size; }
+/* div only: svg.diagram also wears .walk, and size containment on an svg
+ * drops its aspect ratio, so it falls to the 150 px default height. */
+div.walk { container-type: inline-size; }
 .walkgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .walkgrid.solo { display: block; }
 .stagecol { min-width: 0; }
