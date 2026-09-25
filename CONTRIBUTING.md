@@ -38,6 +38,9 @@ repo never keeps its own copy of a reusable figure.
 4. Add the new type to the table of contents in `docs/index.html`.
 5. Check the dark theme with the toggle, and check
    `prefers-reduced-motion` (replay must jump to the final frame).
+   For the narrated walkthrough, click the diagram and press the
+   arrow keys. Check that the active arrow draws, the record
+   changes, and the summary table shows on the last step.
 6. Check a narrow window. The rail starts collapsed under 640 px.
 
 ## Release

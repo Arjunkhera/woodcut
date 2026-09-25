@@ -30,18 +30,27 @@ code, and figure meta. Diagram labels are mono at weight 500.
 3. Focus by dimming: 0.28 in charts, 0.55 in diagrams. Never a new
    hue.
 4. Color never carries meaning alone.
+5. One exception to the single accent: the danger token marks a
+   denied or blocked element. It always comes with a dashed stroke,
+   so the shape carries the meaning too. Use it for denial only.
 
 All color comes from theme tokens (`--wc-*`). A component never holds
 a hex value of its own.
 
 ## Motion
 
-1. Tokens: fast 150 ms, base 220 ms, ease-out
-   cubic-bezier(.23, 1, .32, 1).
+1. Tokens: fast 150 ms, base 220 ms, step 450 ms, draw 700 ms,
+   ease-out cubic-bezier(.23, 1, .32, 1).
 2. Animate only to explain a mechanism. Everything stays under
-   300 ms.
-3. Honor reduced motion: replay jumps to the final frame; transitions
-   turn off.
+   300 ms, with one exception.
+3. The exception: a step transition that the reader triggers may
+   show movement for up to 900 ms in total. Only two motions use
+   this time: an element that enters its step, and an arrow that
+   draws itself. The label of a drawn arrow appears after the draw.
+   Hover, expand, variants, the play control and panel changes keep
+   the 300 ms limit.
+4. Honor reduced motion: replay jumps to the final frame; transitions
+   turn off; arrows appear drawn.
 
 ## Interaction chrome — every diagram type, present and future
 
@@ -66,6 +75,40 @@ a hex value of its own.
 
 A new diagram type is not done until it carries all four. Extending
 `WoodcutFigure` is how it carries them.
+
+## Narrated walkthroughs
+
+A scenario becomes a walkthrough when its steps carry prose, or when
+it asks for reveal. Every diagram type supports it through the frame.
+
+1. **Narration.** The panel shows the step number, a title, and one
+   or two plain sentences. In a figure 860 px wide or more it sits to
+   the right of the diagram. In a narrower figure it sits under the
+   diagram, which keeps the full width. It replaces the event log.
+   A page that wants the panel on the right gives narrated figures
+   room to grow past the text column.
+2. **Record.** A step may show a small key and value table: what the
+   system holds after this step. Mark the rows the step changed. Keep
+   the same keys from step to step, so the reader sees values change.
+3. **Tracker.** A row of pills names every step. Done pills are
+   solid, the current pill is filled with the accent, and pills still
+   to come are dashed.
+4. **Stage.** The active element wears an accent ring. Reached
+   elements turn gray. With reveal, elements the story has not
+   reached stay hidden and enter on their step. A denied element
+   wears a dashed danger border, and a badge may say why.
+5. **Pace.** The reader sets the pace. A walkthrough has no play
+   control, and nothing moves until the reader acts. A click on the
+   diagram goes one step forward. The arrow keys, Home and End step
+   while the figure has focus, and in the fullscreen view. A plain
+   replay keeps its dial only: there a click and the arrow keys do
+   not step.
+6. **Width.** A narrated figure takes its layout from its own
+   width, so its page must give it a definite width: a block in the
+   text column, or a set width. A figure that shrinks to fit its
+   content, such as a flex item without a width, collapses.
+7. **Summary.** The last step may show a summary table under the
+   figure. Its rows enter one after another.
 
 ## Diagram grammar
 

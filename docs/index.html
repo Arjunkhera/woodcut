@@ -86,6 +86,14 @@
         </a></li>
       </ul>
 
+      <p class="tocgroup">ON EVERY TYPE</p>
+      <ul>
+        <li><a href="#walkthrough" data-nav="walkthrough">
+          <span class="navname">Narrated walkthrough</span>
+          <span class="navq">What happens, one step at a time?</span>
+        </a></li>
+      </ul>
+
       <p class="tocgroup">REFERENCE</p>
       <!-- GitHub Pages serves a .md file as plain text. These point at
            the rendered copies on GitHub instead. -->
@@ -103,7 +111,8 @@
       <p>Every template below is one diagram type. Each answers one
       question, and each carries the same chrome: hover cards, a
       fullscreen view with zoom and a detail rail, variants, and
-      scenario replay. Pick the type by the question your prose asks.</p>
+      scenario replay. Any type can also tell a narrated walkthrough.
+      Pick the type by the question your prose asks.</p>
 
       <section id="block-diagram">
         <header class="sechead">
@@ -416,6 +425,117 @@
       }
       </script>
     </wc-sequence>
+      </section>
+
+      <section id="walkthrough">
+        <header class="sechead">
+          <h2>Narrated walkthrough</h2>
+          <code class="tag">steps[].title · body · record</code>
+        </header>
+        <p class="question">What happens, one step at a time?</p>
+        <h3>How a release reaches the registry</h3>
+        <p>A narrated scenario tells a story on any diagram type. Each
+        step adds a title, a sentence or two, and a record of what the
+        system holds now. The stage follows: new elements enter, the
+        active one wears a ring, and the active arrow draws itself.
+        Click the diagram or press the arrow keys to move.</p>
+
+<wc-flowchart>
+      <script type="application/json">
+      {
+        "label": "FIG 6 · RELEASE WALKTHROUGH",
+        "hint": "click the diagram or press → · pick a scenario",
+        "caption": "Each stage of a release can stop it. Only the version check ends a green run with nothing published.",
+        "footnote": "Sample data. The commit, the versions and the test count are invented.",
+        "variants": [
+          {
+            "name": "release",
+            "viewBox": [600, 236],
+            "nodes": [
+              { "id": "merge", "x": 16, "y": 30, "w": 112, "h": 48, "label": "MERGE", "sub": "main branch",
+                "card": { "title": "MERGE", "body": "A reviewed pull request lands on the main branch. The release starts from this commit only." } },
+              { "id": "ci", "x": 168, "y": 30, "w": 112, "h": 48, "label": "CI", "sub": "test · build",
+                "card": { "title": "CI", "body": "The workflow runs the full test suite and builds the package from the commit." } },
+              { "id": "check", "shape": "diamond", "x": 318, "y": 18, "w": 124, "h": 72, "label": "version new?",
+                "card": { "title": "VERSION CHECK", "body": "The workflow asks the registry whether it already holds this version number." } },
+              { "id": "registry", "x": 482, "y": 30, "w": 102, "h": 48, "label": "REGISTRY", "sub": "package store",
+                "card": { "title": "REGISTRY", "body": "The public package store. It accepts each version once and never replaces it." } },
+              { "id": "tag", "x": 482, "y": 168, "w": 102, "h": 48, "label": "TAG", "sub": "git · notes",
+                "card": { "title": "TAG", "body": "A git tag marks the released commit, and the release notes list the merged pull requests." } },
+              { "id": "stop", "shape": "end", "x": 380, "y": 192, "label": "nothing ships", "labelAt": [366, 196], "labelAnchor": "end" }
+            ],
+            "edges": [
+              { "id": "e1", "kind": "accent", "points": [[128, 54], [168, 54]] },
+              { "id": "e2", "kind": "accent", "points": [[280, 54], [318, 54]] },
+              { "id": "yes", "kind": "accent", "points": [[442, 54], [482, 54]], "label": "yes", "labelAt": [462, 44] },
+              { "id": "e4", "kind": "accent", "points": [[533, 78], [533, 168]], "label": "tag", "labelAt": [543, 126], "labelAnchor": "start" },
+              { "id": "no", "kind": "faint", "points": [[380, 90], [380, 184]], "label": "no", "labelAt": [390, 140], "labelAnchor": "start" }
+            ],
+            "scenarios": [
+              { "name": "a clean release", "reveal": true, "recordLabel": "WHAT THE RELEASE HOLDS", "steps": [
+                { "active": ["merge"], "name": "merge",
+                  "title": "A change lands on main",
+                  "body": "A pull request merges. The release workflow starts on the new commit.",
+                  "record": [["commit", "a1f9c3e", true], ["version", "1.4.0"], ["tests", "—"], ["check", "—"], ["registry", "1.3.2"], ["tag", "—"]] },
+                { "active": ["e1", "ci"], "name": "test",
+                  "title": "CI tests the commit",
+                  "body": "The workflow runs the tests and builds the package. A failure stops the run here, before anything leaves the repo.",
+                  "record": [["commit", "a1f9c3e"], ["version", "1.4.0"], ["tests", "212 passed", true], ["check", "—"], ["registry", "1.3.2"], ["tag", "—"]] },
+                { "active": ["e2", "check"], "name": "check",
+                  "title": "The workflow checks the version",
+                  "body": "It asks the registry whether 1.4.0 exists. It does not, so the release goes on.",
+                  "record": [["commit", "a1f9c3e"], ["version", "1.4.0"], ["tests", "212 passed"], ["check", "1.4.0 is free", true], ["registry", "1.3.2"], ["tag", "—"]] },
+                { "active": ["yes", "registry"], "name": "publish",
+                  "title": "The registry takes the package",
+                  "body": "The workflow publishes 1.4.0. Anyone can install it from this moment.",
+                  "record": [["commit", "a1f9c3e"], ["version", "1.4.0"], ["tests", "212 passed"], ["check", "1.4.0 is free"], ["registry", "1.4.0", true], ["tag", "—"]] },
+                { "active": ["e4", "tag"], "name": "tag",
+                  "title": "The commit gets a tag",
+                  "body": "The workflow tags the commit v1.4.0. It writes the release notes from the merged pull requests.",
+                  "record": [["commit", "a1f9c3e"], ["version", "1.4.0"], ["tests", "212 passed"], ["check", "1.4.0 is free"], ["registry", "1.4.0"], ["tag", "v1.4.0", true]] },
+                { "active": [], "name": "recap",
+                  "title": "What each stage proved",
+                  "body": "Each stage adds one fact to the release. The table under the figure lists them.",
+                  "record": [["commit", "a1f9c3e"], ["version", "1.4.0"], ["tests", "212 passed"], ["check", "1.4.0 is free"], ["registry", "1.4.0"], ["tag", "v1.4.0"]],
+                  "summary": {
+                    "title": "Five stages, five facts",
+                    "head": ["STAGE", "PROVES", "STOPS THE RELEASE WHEN"],
+                    "rows": [
+                      ["merge", "A person reviewed the change.", "The pull request is not approved."],
+                      ["ci", "The code builds and every test passes.", "One test fails."],
+                      ["check", "The version number is new.", "The registry holds it already."],
+                      ["publish", "The package is public.", "The registry refuses the upload."],
+                      ["tag", "The released commit is easy to find.", "Never. The package is already out."]
+                    ] } }
+              ] },
+              { "name": "the version was not bumped", "recordLabel": "WHAT THE RELEASE HOLDS", "steps": [
+                { "active": ["merge"], "name": "merge",
+                  "title": "A change lands on main",
+                  "body": "A pull request merges. Its author did not change the version number.",
+                  "record": [["commit", "b27d04e", true], ["version", "1.3.2"], ["tests", "—"], ["check", "—"], ["registry", "1.3.2"]] },
+                { "active": ["e1", "ci"], "name": "test",
+                  "title": "CI tests the commit",
+                  "body": "The tests pass and the package builds. So far the run looks like any other.",
+                  "record": [["commit", "b27d04e"], ["version", "1.3.2"], ["tests", "212 passed", true], ["check", "—"], ["registry", "1.3.2"]] },
+                { "active": ["e2", "check"], "name": "check",
+                  "title": "The workflow checks the version",
+                  "body": "It asks the registry whether 1.3.2 exists. It does: that version shipped last week.",
+                  "record": [["commit", "b27d04e"], ["version", "1.3.2"], ["tests", "212 passed"], ["check", "1.3.2 is taken", true], ["registry", "1.3.2"]] },
+                { "active": [], "denied": ["yes", "registry"], "deniedLabel": "1.3.2 EXISTS", "name": "refused",
+                  "title": "The path to the registry is closed",
+                  "body": "A registry accepts each version once and never replaces it. The workflow does not try the upload.",
+                  "record": [["commit", "b27d04e"], ["version", "1.3.2"], ["tests", "212 passed"], ["check", "1.3.2 is taken"], ["registry", "1.3.2 · unchanged", true]] },
+                { "active": ["no", "stop"], "name": "skip",
+                  "title": "Nothing ships",
+                  "body": "The run ends green and publishes nothing. Bump the version in the next pull request to release.",
+                  "record": [["commit", "b27d04e"], ["version", "1.3.2"], ["tests", "212 passed"], ["check", "1.3.2 is taken"], ["registry", "1.3.2 · unchanged"]] }
+              ] }
+            ]
+          }
+        ]
+      }
+      </script>
+    </wc-flowchart>
       </section>
     </main>
   </div>

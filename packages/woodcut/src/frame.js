@@ -6,6 +6,12 @@
  * rail and zoom, the variant dropdown, and scenario replay with the
  * numbered dial. A new diagram type is not done until it carries all
  * four; extending this class is how it carries them.
+ *
+ * Replay also carries narrated walkthroughs. A scenario step may hold
+ * a title, a body, a record and a summary table. The frame then shows
+ * a narration panel, rings the active element, dims reached ones,
+ * draws the active arrow, and can hide elements until their step.
+ * Every diagram type gets this, because it lives here.
  */
 
 const EASE = 'cubic-bezier(.23, 1, .32, 1)';
@@ -119,8 +125,101 @@ svg.diagram .grpbg { fill: var(--wc-paper, #ffffff); }
 svg.diagram .badge { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10px; font-weight: 500; fill: var(--wc-faint, #9a9a90); opacity: 0; transition: opacity var(--wc-dur-base, 220ms) ${EASE}; }
 svg.diagram .badge.show { opacity: 1; }
 svg.diagram .badge.cur { fill: var(--wc-accent, #6b5640); }
+
+/* ---------- walkthrough: narration beside or under the stage ----------
+ * .walk is the size container. It must never hold the overlay: a size
+ * container is the containing block for fixed children. */
+/* div only: svg.diagram also wears .walk, and size containment on an svg
+ * drops its aspect ratio, so it falls to the 150 px default height. */
+/* Only a narrated figure is a size container. A size container does
+ * not take its width from its content, so a narrated figure needs a
+ * definite width from its page (see GRAMMAR.md). Other figures keep
+ * the layout they had before. */
+div.walk { width: 100%; }
+div.walk.narrated { container-type: inline-size; }
+.walkgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.walkgrid.solo { display: block; }
+.stagecol { min-width: 0; }
+.svgwrap:focus { outline: none; }
+.svgwrap:focus-visible { outline: 2px solid var(--wc-accent, CanvasText); outline-offset: 4px; border-radius: 4px; }
+.svgwrap svg.diagram.stepable { cursor: pointer; }
+/* The layout follows the width of the figure, not the window. Under
+ * 860 px the diagram keeps the full width and the panel sits under
+ * it: the pills on top, then the prose and the record side by side
+ * when there is room. From 860 px the panel moves to the right of the
+ * diagram, and the diagram keeps close to its natural 600 px. */
+.narr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 24px; align-items: start; border-top: 1px solid var(--wc-line); padding: 12px 2px 6px 2px; min-width: 0; }
+.narr .track { grid-column: 1 / -1; }
+.narr[hidden], .summary[hidden] { display: none; }
+@container (min-width: 560px) {
+  .narr.hasrec { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+}
+@container (min-width: 860px) {
+  .walkgrid:not(.solo) { grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 28px; align-items: start; }
+  .walkgrid:not(.solo) .narr { grid-template-columns: minmax(0, 1fr); gap: 12px; border-top: 0; border-left: 1px solid var(--wc-line); padding: 6px 0 6px 20px; }
+}
+.track { display: flex; flex-wrap: wrap; gap: 6px; }
+.tp { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10.5px; line-height: 1; padding: 5px 9px; border-radius: 999px; border: 1px dashed var(--wc-line-strong); background: transparent; color: var(--wc-faint); cursor: pointer; transition: background-color var(--wc-dur-fast, 150ms) ${EASE}, color var(--wc-dur-fast, 150ms) ${EASE}, border-color var(--wc-dur-fast, 150ms) ${EASE}; }
+.tp.done { border-style: solid; border-color: var(--wc-line-strong); color: var(--wc-body); background: var(--wc-paper); }
+.tp.cur { border-style: solid; border-color: var(--wc-accent, CanvasText); background: var(--wc-accent, CanvasText); color: var(--wc-paper, Canvas); font-weight: 500; }
+.tp:focus-visible { outline: 2px solid var(--wc-accent, CanvasText); outline-offset: 2px; }
+.nstep { font-size: 10.5px; letter-spacing: 0.12em; color: var(--wc-accent); }
+.nsay { display: flex; flex-direction: column; gap: 6px; }
+.ntitle { font-size: 19px; line-height: 1.25; color: var(--wc-ink); }
+.nbody { font-size: 15px; line-height: 1.55; color: var(--wc-body); }
+.rise { animation: wc-rise var(--wc-dur-base, 220ms) ${EASE} both; }
+.rec { border: 1px solid var(--wc-line); border-radius: 6px; padding: 8px 12px 6px 12px; }
+.rechead { font-size: 10px; letter-spacing: 0.12em; color: var(--wc-muted); padding-bottom: 6px; }
+.recrow { display: grid; grid-template-columns: minmax(72px, 38%) minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 5px 6px; margin: 0 -6px; border-top: 1px solid var(--wc-line); border-radius: 4px; }
+.recrow .k { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 11px; color: var(--wc-muted); }
+.recrow .v { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 12px; color: var(--wc-ink); overflow-wrap: anywhere; }
+.recrow.chg { background: var(--wc-accent-soft, var(--wc-panel)); box-shadow: inset 2px 0 0 var(--wc-accent); }
+.recrow.chg .v { color: var(--wc-accent); font-weight: 500; animation: wc-rise var(--wc-dur-base, 220ms) ${EASE} both; }
+.rail .rec { padding: 6px 10px 4px 10px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.summary { padding: 16px 2px 4px 2px; }
+.sumtitle { font-size: 17px; color: var(--wc-ink); margin-bottom: 8px; }
+.sumwrap { overflow-x: auto; scrollbar-width: thin; }
+table.sum { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.45; }
+.sum th { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: var(--wc-muted); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--wc-ink); }
+.sum td { padding: 7px 8px; border-bottom: 1px solid var(--wc-line); vertical-align: top; color: var(--wc-body); }
+.sum td:first-child { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 11.5px; font-weight: 500; color: var(--wc-ink); }
+.sum tbody tr { animation: wc-rise var(--wc-dur-base, 220ms) ${EASE} both; }
+@keyframes wc-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes wc-show { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wc-draw { from { stroke-dashoffset: var(--wc-len); } to { stroke-dashoffset: 0; } }
+
+/* ---------- walkthrough: the stage ----------
+ * Step transitions the reader triggers may run to 900 ms in total
+ * (GRAMMAR.md, Motion). Only entry and the edge draw use that time. */
+svg.diagram.walk .wc-el { transition: opacity var(--wc-dur-step, 450ms) ${EASE}, transform var(--wc-dur-step, 450ms) ${EASE}; transform-box: fill-box; transform-origin: center; }
+svg.diagram.reveal .wc-el.hidden { opacity: 0 !important; transform: scale(0.92); pointer-events: none; }
+svg.diagram .wc-node .halo { fill: none; stroke: var(--wc-accent-soft, var(--wc-panel)); stroke-width: 8; opacity: 0; pointer-events: none; transition: opacity var(--wc-dur-step, 450ms) ${EASE}; }
+svg.diagram.walk .wc-node.active .halo { opacity: 1; }
+svg.diagram.walk .wc-node.past .body { fill: none; stroke: var(--wc-line-strong); stroke-width: 1.4; }
+svg.diagram.walk .wc-node.past .lbl, svg.diagram.walk .wc-node.past .dlbl { fill: var(--wc-muted); }
+svg.diagram.walk .wc-edge.past { color: var(--wc-faint); }
+svg.diagram .wc-node.denied .body { fill: var(--wc-danger-soft, var(--wc-panel)); stroke: var(--wc-danger, var(--wc-accent)); stroke-width: 1.5; stroke-dasharray: 4 3; }
+svg.diagram .wc-node.denied .halo { opacity: 0; }
+svg.diagram .wc-edge.denied { color: var(--wc-danger, var(--wc-accent)); }
+svg.diagram .wc-edge.denied .stroke { stroke-dasharray: 4 3; }
+svg.diagram .lblpill { opacity: 0; fill: var(--wc-accent); pointer-events: none; transition: opacity var(--wc-dur-fast, 150ms) ${EASE}; }
+svg.diagram.walk .wc-edge.active .lblpill, svg.diagram.walk .wc-edge.denied .lblpill { opacity: 1; }
+svg.diagram.walk .wc-edge.denied .lblpill { fill: var(--wc-danger, var(--wc-accent)); }
+svg.diagram.walk .wc-edge.active .elbl, svg.diagram.walk .wc-edge.denied .elbl { fill: var(--wc-paper); }
+svg.diagram .wc-edge.draw .stroke { stroke-dasharray: var(--wc-len) var(--wc-len); animation: wc-draw var(--wc-dur-draw, 700ms) ${EASE} both; }
+svg.diagram .wc-edge.draw .tip, svg.diagram .wc-edge.draw .elbl, svg.diagram .wc-edge.draw .lblpill { animation: wc-show var(--wc-dur-fast, 150ms) ${EASE} var(--wc-dur-draw, 700ms) both; }
+svg.diagram .wc-edge.fadein .stroke, svg.diagram .wc-edge.fadein .tip { animation: wc-show var(--wc-dur-step, 450ms) ${EASE} both; }
+svg.diagram .wc-edge.fadein .elbl, svg.diagram .wc-edge.fadein .lblpill { animation: wc-show var(--wc-dur-fast, 150ms) ${EASE} var(--wc-dur-step, 450ms) both; }
+svg.diagram .dmark rect { fill: var(--wc-danger, var(--wc-accent)); }
+svg.diagram .dmark text { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 9px; font-weight: 500; letter-spacing: 0.04em; fill: var(--wc-paper); }
+svg.diagram .dmark { pointer-events: none; animation: wc-show var(--wc-dur-fast, 150ms) ${EASE} var(--wc-dur-step, 450ms) both; }
+
 @media (prefers-reduced-motion: reduce) {
   svg.diagram .wc-el, svg.diagram .wc-node .body, svg.diagram .badge, .pip { transition: none !important; }
+  svg.diagram.walk .wc-el, svg.diagram .halo, svg.diagram .lblpill, .tp { transition: none !important; }
+  svg.diagram .wc-edge .stroke, svg.diagram .wc-edge .tip, svg.diagram .wc-edge .elbl, svg.diagram .lblpill, svg.diagram .dmark,
+  .rise, .recrow.chg .v, .sum tbody tr { animation: none !important; }
 }
 `;
 
@@ -154,6 +253,7 @@ export class WoodcutFigure extends HTMLElement {
     this.onKey = (e) => {
       if (!this.st.expanded) return;
       if (e.key === 'Escape') { this.setExpanded(false); return; }
+      if (this.stepKey(e)) return;
       if (e.key === '0') { this.queueFit(); return; }
       if (e.key === '1') { this.queueZoomTo(1); return; }
       if (e.key === '+' || e.key === '=') { this.queueZoomTo(this.nextZoomStop(1)); return; }
@@ -224,6 +324,46 @@ export class WoodcutFigure extends HTMLElement {
       this.pan = null;
       if (this.viewport) this.viewport.classList.remove('grabbing');
     };
+
+    /* The reader steps with the arrow keys while focus is in the
+     * figure. In the fullscreen view the window listener (onKey)
+     * takes the keys instead, so this one stands down. */
+    this.onHostKey = (e) => {
+      if (this.st.expanded) return;
+      const t = e.composedPath ? e.composedPath()[0] : e.target;
+      if (t && (t.tagName === 'SELECT' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      this.stepKey(e);
+    };
+    this.addEventListener('keydown', this.onHostKey);
+
+    /* In a walkthrough, a click on the stage moves one step forward. A drag is a pan,
+     * not a click, so a pointer that travelled is ignored. */
+    this.downAt = null;
+    this.onStageDown = (e) => { this.downAt = [e.clientX, e.clientY]; };
+    this.onStageClick = (e) => {
+      const d = this.downAt;
+      this.downAt = null;
+      if (!this.scenario || !this.isWalk || e.button !== 0) return;
+      if (d && Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 4) return;
+      this.setStep(this.st.step + 1);
+    };
+  }
+
+  /* Arrow keys, Home and End step a walkthrough. Returns true when the
+   * key was a step key. */
+  stepKey(e) {
+    /* Walkthroughs only. A plain replay keeps its old keys: in the
+     * fullscreen view the arrows scroll a zoomed diagram. */
+    if (!this.scenario || !this.isWalk || e.metaKey || e.ctrlKey || e.altKey) return false;
+    let n = null;
+    if (e.key === 'ArrowRight') n = this.st.step + 1;
+    else if (e.key === 'ArrowLeft') n = this.st.step - 1;
+    else if (e.key === 'Home') n = 1;
+    else if (e.key === 'End') n = this.maxStep;
+    if (n === null) return false;
+    e.preventDefault();
+    this.setStep(n);
+    return true;
   }
 
   connectedCallback() {
@@ -254,6 +394,18 @@ export class WoodcutFigure extends HTMLElement {
   get scenarios() { return this.variantData.scenarios || []; }
   get scenario() { return this.scenarios[this.st.scenario || 0]; }
   get maxStep() { return this.scenario ? this.scenario.steps.length : 0; }
+
+  /* A narrated scenario carries prose on at least one step. It shows
+   * the narration panel in place of the event log. */
+  get narrated() {
+    const sc = this.scenario;
+    return !!sc && sc.steps.some((st) => st.title || st.body || st.record || st.summary);
+  }
+
+  /* A walkthrough is a narrated scenario, or one that asks for reveal.
+   * It dims reached elements, rings the active one, and draws the
+   * active arrow. */
+  get isWalk() { return this.narrated || !!(this.scenario && this.scenario.reveal); }
 
   /* ---------- shell ---------- */
 
@@ -292,10 +444,34 @@ export class WoodcutFigure extends HTMLElement {
       root.appendChild(row);
     }
 
-    root.appendChild(this.svgHolder);
-
+    /* The stage column holds the drawing and the step controls. The
+     * narration panel sits beside it on a wide figure and under it on
+     * a narrow one. The summary table spans the full width. */
+    this.walkEl = this.el('div', 'walk');
+    this.walkGrid = this.el('div', 'walkgrid solo');
+    const stageCol = this.el('div', 'stagecol');
+    stageCol.appendChild(this.svgHolder);
     this.controlsHost = this.el('div');
-    root.appendChild(this.controlsHost);
+    stageCol.appendChild(this.controlsHost);
+    this.walkGrid.appendChild(stageCol);
+    this.narrEl = this.el('div', 'narr');
+    this.narrEl.hidden = true;
+    /* The pills, the live region and the record host live as long as
+     * the figure. A step updates them in place, so a focused pill
+     * keeps focus and screen readers announce the new text. */
+    this.trackEl = this.el('div', 'track');
+    this.trackFor = null;
+    this.sayEl = this.el('div', 'nsay');
+    this.sayEl.setAttribute('aria-live', 'polite');
+    this.recHost = this.el('div');
+    this.recHost.style.display = 'contents';
+    this.narrEl.append(this.trackEl, this.sayEl, this.recHost);
+    this.walkGrid.appendChild(this.narrEl);
+    this.walkEl.appendChild(this.walkGrid);
+    this.summaryEl = this.el('div', 'summary');
+    this.summaryEl.hidden = true;
+    this.walkEl.appendChild(this.summaryEl);
+    root.appendChild(this.walkEl);
 
     this.captionEl = this.el('div', 'caption');
     root.appendChild(this.captionEl);
@@ -340,6 +516,10 @@ export class WoodcutFigure extends HTMLElement {
     if (this.svg) this.svg.remove();
     this.svg = this.buildSvg(this.variantData);
     this.svg.classList.add('diagram');
+    this.addHalos(this.svg);
+    this.svg.addEventListener('mousedown', this.onStageDown);
+    this.svg.addEventListener('click', this.onStageClick);
+    this.lastFocus = null;
     this.svgHolder.insertBefore(this.svg, this.card);
     /* A rebuild while expanded keeps the drawing in the overlay. */
     if (this.st.expanded && this.canvas) {
@@ -354,6 +534,19 @@ export class WoodcutFigure extends HTMLElement {
       this.st.detail = null;
       this.updateRail();
     }
+  }
+
+  /* Each node gets a copy of its body shape behind it. The copy is
+   * the accent ring of the active node in a walkthrough. It stays
+   * invisible otherwise. */
+  addHalos(svg) {
+    svg.querySelectorAll('.wc-node').forEach((g) => {
+      const body = g.querySelector('.body');
+      if (!body) return;
+      const halo = body.cloneNode(false);
+      halo.setAttribute('class', 'halo');
+      g.insertBefore(halo, g.firstChild);
+    });
   }
 
   wireCards(svg) {
@@ -392,11 +585,20 @@ export class WoodcutFigure extends HTMLElement {
   renderControls() {
     this.controlsHost.innerHTML = '';
     this.playBtn = null;
+    this.prevBtn = this.nextBtn = this.dial = this.stepName = this.logEl = null;
+    /* The stage takes focus so the arrow keys can step it. */
+    if (this.scenario && this.isWalk) {
+      this.svgHolder.tabIndex = 0;
+      this.svgHolder.setAttribute('aria-label', 'Diagram. Click it or press the arrow keys to step.');
+    } else {
+      this.svgHolder.removeAttribute('tabindex');
+      this.svgHolder.removeAttribute('aria-label');
+    }
     if (!this.scenario) return;
     const row = this.el('div', 'controls');
-    this.prevBtn = this.el('div', 'nav'); this.prevBtn.innerHTML = PREV_ICON; this.prevBtn.title = 'Previous step';
+    this.prevBtn = this.el('div', 'nav'); this.prevBtn.innerHTML = PREV_ICON; this.prevBtn.title = 'Previous step (←)';
     this.prevBtn.onclick = () => this.setStep(this.st.step - 1);
-    this.nextBtn = this.el('div', 'nav'); this.nextBtn.innerHTML = NEXT_ICON; this.nextBtn.title = 'Next step';
+    this.nextBtn = this.el('div', 'nav'); this.nextBtn.innerHTML = NEXT_ICON; this.nextBtn.title = 'Next step (→)';
     this.nextBtn.onclick = () => this.setStep(this.st.step + 1);
     this.dial = this.el('div', 'dial');
     for (let i = 1; i <= this.maxStep; i++) {
@@ -404,23 +606,32 @@ export class WoodcutFigure extends HTMLElement {
       pip.onclick = () => this.setStep(i);
       this.dial.appendChild(pip);
     }
+    row.append(this.prevBtn, this.dial, this.nextBtn);
     /* The play control rides with the dial, so it follows the step
-     * controls into the fullscreen overlay. */
-    this.playBtn = this.el('div', 'iconbtn');
-    this.playBtn.title = 'Replay the scenario';
-    this.playBtn.innerHTML = PLAY_ICON;
-    this.playBtn.onclick = () => this.togglePlay();
+     * controls into the fullscreen overlay. A walkthrough has none:
+     * the reader sets the pace of a narrated story. */
+    if (!this.isWalk) {
+      this.playBtn = this.el('div', 'iconbtn');
+      this.playBtn.title = 'Replay the scenario';
+      this.playBtn.innerHTML = PLAY_ICON;
+      this.playBtn.onclick = () => this.togglePlay();
+      row.appendChild(this.playBtn);
+    }
     this.stepName = this.el('div', 'stepname mono');
-    row.append(this.prevBtn, this.dial, this.nextBtn, this.playBtn, this.stepName);
+    row.appendChild(this.stepName);
     this.controlsHost.appendChild(row);
-    this.logEl = this.el('div', 'log');
-    this.controlsHost.appendChild(this.logEl);
+    /* The narration panel replaces the event log. */
+    if (!this.narrated) {
+      this.logEl = this.el('div', 'log');
+      this.controlsHost.appendChild(this.logEl);
+    }
   }
 
   setScenario(i) {
     this.stopPlay();
     this.st.scenario = i;
     this.st.step = 1;
+    this.lastFocus = null;
     this.renderControls();
     this.applyStep();
   }
@@ -436,7 +647,9 @@ export class WoodcutFigure extends HTMLElement {
 
   setStep(n) {
     this.stopPlay();
-    this.st.step = Math.max(1, Math.min(n, this.maxStep));
+    const next = Math.max(1, Math.min(n, this.maxStep));
+    if (next === this.st.step) return;
+    this.st.step = next;
     this.applyStep();
   }
 
@@ -461,17 +674,50 @@ export class WoodcutFigure extends HTMLElement {
 
   applyStep() {
     if (this.playBtn) this.playBtn.classList.toggle('on', this.st.playing);
-    if (!this.scenario) return;
+    if (!this.scenario) {
+      this.svg.classList.remove('walk', 'reveal', 'stepable');
+      this.svg.querySelectorAll('[data-follows]').forEach((elm) => elm.classList.remove('future', 'hidden'));
+      this.renderNarration();
+      return;
+    }
     const steps = this.scenario.steps;
     const s = this.st.step;
+    const step = steps[s - 1];
+    const walk = this.isWalk;
+    const reveal = walk && !!this.scenario.reveal;
+    const ids = (st) => [...(st.active || []), ...(st.denied || [])];
     const seen = {};
-    for (let i = 0; i < s; i++) (steps[i].active || []).forEach((id) => { seen[id] = i + 1; });
-    const now = steps[s - 1].active || [];
+    for (let i = 0; i < s; i++) ids(steps[i]).forEach((id) => { seen[id] = i + 1; });
+    const now = step.active || [];
+    const denied = step.denied || [];
+    const focus = new Set([...now, ...denied]);
+    const before = this.lastFocus || new Set();
+    this.svg.classList.toggle('walk', walk);
+    this.svg.classList.toggle('reveal', reveal);
+    this.svg.classList.toggle('stepable', walk);
     this.svg.querySelectorAll('[data-el]').forEach((elm) => {
       const id = elm.getAttribute('data-el');
       elm.classList.toggle('active', now.includes(id));
+      elm.classList.toggle('denied', denied.includes(id));
       elm.classList.toggle('future', !seen[id]);
+      /* Reveal hides every element the scenario has not reached yet,
+       * so the stage holds only the story told so far. */
+      elm.classList.toggle('hidden', reveal && !seen[id]);
+      elm.classList.toggle('past', walk && !!seen[id] && !focus.has(id));
+      if (elm.classList.contains('wc-edge')) {
+        this.drawEdge(elm, walk && focus.has(id), !before.has(id), denied.includes(id));
+      }
     });
+    this.lastFocus = focus;
+    /* A follower, such as a sequence activation bar, takes the reveal
+     * and dim state of the element it names. Walkthroughs only, so a
+     * plain replay draws it as before. */
+    this.svg.querySelectorAll('[data-follows]').forEach((elm) => {
+      const id = elm.getAttribute('data-follows');
+      elm.classList.toggle('future', walk && !seen[id]);
+      elm.classList.toggle('hidden', reveal && !seen[id]);
+    });
+    this.markDenied(denied, step.deniedLabel);
     this.svg.querySelectorAll('.badge').forEach((b) => {
       const id = b.getAttribute('data-badge-for');
       b.textContent = seen[id] ? String(seen[id]) : '';
@@ -484,11 +730,18 @@ export class WoodcutFigure extends HTMLElement {
         pip.classList.toggle('fut', i + 1 > s);
       });
       const cur = this.dial.children[s - 1];
-      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      /* Scroll the dial itself. scrollIntoView would also scroll the
+       * page, and a step must never move the reader's page. */
+      if (cur) {
+        const d = this.dial;
+        const dr = d.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+        if (cr.left < dr.left) d.scrollLeft -= dr.left - cr.left;
+        else if (cr.right > dr.right) d.scrollLeft += cr.right - dr.right;
+      }
     }
     if (this.prevBtn) this.prevBtn.classList.toggle('off', s === 1);
     if (this.nextBtn) this.nextBtn.classList.toggle('off', s === this.maxStep);
-    if (this.stepName) this.stepName.textContent = steps[s - 1].name || '';
+    if (this.stepName) this.stepName.textContent = step.name || '';
     if (this.logEl) {
       this.logEl.innerHTML = '';
       for (let i = s - 1; i >= 0; i--) {
@@ -498,7 +751,193 @@ export class WoodcutFigure extends HTMLElement {
         this.logEl.appendChild(row);
       }
     }
+    this.renderNarration();
     this.updateRail();
+  }
+
+  /* Sets the draw state of one edge. `focused` is true when the edge
+   * is active or denied in a walkthrough. `fresh` is true when it was
+   * not in focus on the step before, so its entry must play again.
+   * A solid edge draws itself; a dashed or denied edge fades in. Its
+   * label and arrowhead appear after the stroke. */
+  drawEdge(elm, focused, fresh, denied) {
+    const stroke = elm.querySelector('.stroke');
+    if (!stroke) return;
+    if (!focused) { elm.classList.remove('draw', 'fadein'); return; }
+    this.addLabelPill(elm);
+    if (!fresh) return;
+    elm.classList.remove('draw', 'fadein');
+    if (this.reduced) return;
+    const dashed = denied || stroke.hasAttribute('stroke-dasharray');
+    if (!dashed) {
+      const len = typeof stroke.getTotalLength === 'function' ? stroke.getTotalLength() : 0;
+      if (!(len > 0)) return;
+      stroke.style.setProperty('--wc-len', (len + 1).toFixed(1) + 'px');
+    }
+    /* Read layout once so the removed class takes effect. Then the
+     * animation starts again from its first frame. */
+    void elm.getBoundingClientRect();
+    elm.classList.add(dashed ? 'fadein' : 'draw');
+  }
+
+  /* Puts a pill behind the label of an edge, once. The pill shows only
+   * while the edge is in focus in a walkthrough. */
+  addLabelPill(elm) {
+    const lbl = elm.querySelector('.elbl');
+    if (!lbl || (lbl.previousSibling && lbl.previousSibling.classList && lbl.previousSibling.classList.contains('lblpill'))) return;
+    let box;
+    try { box = lbl.getBBox(); } catch (_) { return; }
+    if (!box || !box.width) return;
+    const padX = 6, padY = 3;
+    const h = box.height + padY * 2;
+    lbl.parentNode.insertBefore(this.s('rect', {
+      x: (box.x - padX).toFixed(1), y: (box.y - padY).toFixed(1),
+      width: (box.width + padX * 2).toFixed(1), height: h.toFixed(1), rx: (h / 2).toFixed(1), class: 'lblpill'
+    }), lbl);
+  }
+
+  /* Draws a badge at the top right of each denied node, when the step
+   * gives a label for it. The dashed danger border is the mark; the
+   * badge says why in words. */
+  markDenied(denied, label) {
+    const old = this.svg.querySelector('.dmarks');
+    if (old) old.remove();
+    if (!denied.length || !label) return;
+    const layer = this.s('g', { class: 'dmarks' });
+    this.svg.appendChild(layer);
+    const vbw = this.naturalSize()[0];
+    for (const id of denied) {
+      const node = this.svg.querySelector(`.wc-node[data-el="${CSS.escape(id)}"]`);
+      if (!node) continue;
+      const body = node.querySelector('.body') || node;
+      let bb;
+      try { bb = body.getBBox(); } catch (_) { continue; }
+      const g = this.s('g', { class: 'dmark' });
+      const t = this.sText(0, 0, label, '', 'middle');
+      g.appendChild(t);
+      layer.appendChild(g);
+      let tw = 0;
+      try { tw = t.getBBox().width; } catch (_) { /* not rendered */ }
+      tw = tw || label.length * 5.6;
+      const w = tw + 12, h = 15;
+      let cx = bb.x + bb.width - w / 2 + 6;
+      cx = Math.max(w / 2 + 1, Math.min(cx, vbw - w / 2 - 1));
+      const cy = Math.max(h / 2 + 1, bb.y);
+      t.setAttribute('x', cx.toFixed(1));
+      t.setAttribute('y', (cy + 3).toFixed(1));
+      g.insertBefore(this.s('rect', { x: (cx - w / 2).toFixed(1), y: (cy - h / 2).toFixed(1), width: w.toFixed(1), height: h, rx: h / 2 }), t);
+    }
+  }
+
+  /* ---------- narration ---------- */
+
+  /* The rows of a step's record, as { key, value, changed }. */
+  recordRows(step) {
+    return (step.record || []).map((r) => (Array.isArray(r)
+      ? { key: r[0], value: r[1], changed: !!r[2] }
+      : { key: r.key, value: r.value, changed: !!r.changed }));
+  }
+
+  renderRecord(step) {
+    const rows = this.recordRows(step);
+    if (!rows.length) return null;
+    const rec = this.el('div', 'rec');
+    rec.appendChild(this.el('div', 'rechead mono', this.scenario.recordLabel || 'RECORD'));
+    for (const r of rows) {
+      const row = this.el('div', 'recrow' + (r.changed ? ' chg' : ''));
+      row.appendChild(this.el('div', 'k', String(r.key)));
+      const v = this.el('div', 'v', String(r.value));
+      if (r.changed) v.appendChild(this.el('span', 'sr', ' (changed)'));
+      row.appendChild(v);
+      rec.appendChild(row);
+    }
+    return rec;
+  }
+
+  renderNarration() {
+    const on = this.narrated;
+    this.walkEl.classList.toggle('narrated', on);
+    this.walkGrid.classList.toggle('solo', !on);
+    this.narrEl.hidden = !on;
+    this.summaryEl.innerHTML = '';
+    this.summaryEl.hidden = true;
+    if (!on) {
+      this.trackEl.innerHTML = '';
+      this.trackFor = null;
+      this.sayEl.innerHTML = '';
+      this.recHost.innerHTML = '';
+      return;
+    }
+    const steps = this.scenario.steps;
+    const s = this.st.step;
+    const step = steps[s - 1];
+
+    /* The tracker: one pill per step, marked done, current, or to come.
+     * The border style carries the mark as well as the color. The
+     * pills are built once per scenario and updated in place. */
+    if (this.trackFor !== this.scenario) {
+      this.trackFor = this.scenario;
+      this.trackEl.innerHTML = '';
+      steps.forEach((st, i) => {
+        const p = this.el('button', 'tp', st.name || String(i + 1));
+        p.type = 'button';
+        p.title = st.title || st.name || 'Step ' + (i + 1);
+        p.onclick = () => this.setStep(i + 1);
+        this.trackEl.appendChild(p);
+      });
+    }
+    [...this.trackEl.children].forEach((p, i) => {
+      p.className = 'tp ' + (i + 1 < s ? 'done' : i + 1 === s ? 'cur' : 'fut');
+      if (i + 1 === s) p.setAttribute('aria-current', 'step');
+      else p.removeAttribute('aria-current');
+    });
+
+    /* One live region for the life of the figure. Only its text
+     * changes, so a screen reader announces each step. */
+    if (!this.sayEl.children.length) {
+      this.sayEl.append(this.el('div', 'nstep mono'), this.el('div', 'ntitle'), this.el('div', 'nbody'));
+    }
+    const [nstep, ntitle, nbody] = this.sayEl.children;
+    nstep.textContent = `STEP ${s} / ${steps.length}`;
+    ntitle.textContent = step.title || step.name || '';
+    nbody.textContent = step.body || '';
+    ntitle.hidden = !ntitle.textContent;
+    nbody.hidden = !nbody.textContent;
+    for (const e of [ntitle, nbody]) {
+      e.classList.remove('rise');
+      void e.offsetWidth;
+      e.classList.add('rise');
+    }
+
+    const rec = this.renderRecord(step);
+    this.narrEl.classList.toggle('hasrec', !!rec);
+    this.recHost.innerHTML = '';
+    if (rec) this.recHost.appendChild(rec);
+
+    const sum = step.summary;
+    if (sum && (sum.rows || []).length) {
+      if (sum.title) this.summaryEl.appendChild(this.el('div', 'sumtitle', sum.title));
+      const wrap = this.el('div', 'sumwrap');
+      const table = this.el('table', 'sum');
+      if (sum.head) {
+        const tr = this.el('tr');
+        for (const h of sum.head) tr.appendChild(this.el('th', '', String(h)));
+        const thead = this.el('thead'); thead.appendChild(tr); table.appendChild(thead);
+      }
+      const tbody = this.el('tbody');
+      /* Rows enter one after another. The stagger stops growing at
+       * 480 ms, so the whole table is in within the 900 ms limit. */
+      sum.rows.forEach((r, i) => {
+        const tr = this.el('tr');
+        tr.style.animationDelay = Math.min(i * 80, 480) + 'ms';
+        for (const c of r) tr.appendChild(this.el('td', '', String(c)));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      this.summaryEl.appendChild(wrap);
+      this.summaryEl.hidden = false;
+    }
   }
 
   /* ---------- expand ---------- */
@@ -766,6 +1205,20 @@ export class WoodcutFigure extends HTMLElement {
     top.appendChild(dash);
     rail.appendChild(top);
 
+    /* A narrated scenario leads the rail with the step and its record,
+     * because the inline narration panel is under the overlay. */
+    if (this.narrated) {
+      const step = this.scenario.steps[this.st.step - 1];
+      const say = this.el('div', 'sect');
+      say.appendChild(this.el('div', 'railtag', `STEP ${this.st.step} / ${this.maxStep}`));
+      say.appendChild(this.el('div', 'rule'));
+      say.appendChild(this.el('div', 'railt', step.title || step.name || ''));
+      if (step.body) say.appendChild(this.el('div', 'railb', step.body));
+      const rec = this.renderRecord(step);
+      if (rec) say.appendChild(rec);
+      rail.appendChild(say);
+    }
+
     const detail = this.el('div', 'sect');
     detail.appendChild(this.el('div', 'railtag', 'DETAIL'));
     detail.appendChild(this.el('div', 'rule'));
@@ -773,7 +1226,7 @@ export class WoodcutFigure extends HTMLElement {
     detail.appendChild(this.el('div', 'railb', this.st.detail ? this.st.detail.body : 'Hover any element to read about it.'));
     rail.appendChild(detail);
 
-    if (this.scenario) {
+    if (this.scenario && !this.narrated) {
       const events = this.el('div', 'sect');
       events.appendChild(this.el('div', 'railtag', 'EVENTS'));
       events.appendChild(this.el('div', 'rule'));

@@ -14,13 +14,17 @@ and give every figure the same interaction chrome:
 4. **Replay** — scenarios step through the diagram on a numbered
    dial, with an event log. A play control animates at the reader's
    command; reduced motion gets the final frame.
+5. **Narrated walkthroughs** — a scenario step can carry a title, a
+   sentence or two, and a record of what the system holds now. A
+   narration panel tells the story with the diagram. The reader
+   clicks or presses the arrow keys; the active arrow draws itself.
 
 The taste lives in [GRAMMAR.md](GRAMMAR.md). The components enforce
 it, so every figure in every post reads the same way.
 
 **[See the figure catalog →](https://arjunkhera.github.io/woodcut/docs/)**
-One worked example of every diagram type. Hover a box, expand a
-figure, replay a scenario.
+One worked example of every diagram type, and one narrated
+walkthrough. Hover a box, expand a figure, replay a scenario.
 
 ## Status
 

@@ -27,7 +27,9 @@ export class WoodcutSequence extends WoodcutFigure {
 
     for (const act of v.activations || []) {
       const a = byId[act.actor];
-      svg.appendChild(this.s('rect', { x: a.x - 3, y: act.y1, width: 6, height: act.y2 - act.y1, class: 'act' }));
+      /* The bar follows its actor: a walkthrough dims and reveals
+       * them together. A plain replay leaves the bar as it is. */
+      svg.appendChild(this.s('rect', { x: a.x - 3, y: act.y1, width: 6, height: act.y2 - act.y1, class: 'wc-el act', 'data-follows': act.actor }));
     }
 
     for (const m of v.messages || []) {
