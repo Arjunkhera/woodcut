@@ -139,18 +139,18 @@ div.walk { container-type: inline-size; }
 .svgwrap:focus-visible { outline: 2px solid var(--wc-accent); outline-offset: 4px; border-radius: 4px; }
 .svgwrap svg.diagram.stepable { cursor: pointer; }
 /* The layout follows the width of the figure, not the window. Under
- * 1000 px the diagram keeps the full width and the panel sits under
+ * 860 px the diagram keeps the full width and the panel sits under
  * it: the pills on top, then the prose and the record side by side
- * when there is room. From 1000 px the panel moves beside the
- * diagram. */
+ * when there is room. From 860 px the panel moves to the right of the
+ * diagram, and the diagram keeps close to its natural 600 px. */
 .narr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 24px; align-items: start; border-top: 1px solid var(--wc-line); padding: 12px 2px 6px 2px; min-width: 0; }
 .narr .track { grid-column: 1 / -1; }
 .narr[hidden], .summary[hidden] { display: none; }
 @container (min-width: 560px) {
   .narr.hasrec { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
 }
-@container (min-width: 1000px) {
-  .walkgrid:not(.solo) { grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr); gap: 24px; align-items: start; }
+@container (min-width: 860px) {
+  .walkgrid:not(.solo) { grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 28px; align-items: start; }
   .walkgrid:not(.solo) .narr { grid-template-columns: minmax(0, 1fr); gap: 12px; border-top: 0; border-left: 1px solid var(--wc-line); padding: 6px 0 6px 20px; }
 }
 .track { display: flex; flex-wrap: wrap; gap: 6px; }

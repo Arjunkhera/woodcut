@@ -84,9 +84,11 @@ A scenario becomes a walkthrough when its steps carry prose, or when
 it asks for reveal. Every diagram type supports it through the frame.
 
 1. **Narration.** The panel shows the step number, a title, and one
-   or two plain sentences. It sits under the diagram, which keeps the
-   full width of the figure. Only a figure 1000 px wide or more puts
-   it beside the diagram. It replaces the event log.
+   or two plain sentences. In a figure 860 px wide or more it sits to
+   the right of the diagram. In a narrower figure it sits under the
+   diagram, which keeps the full width. It replaces the event log.
+   A page that wants the panel on the right gives narrated figures
+   room to grow past the text column.
 2. **Record.** A step may show a small key and value table: what the
    system holds after this step. Mark the rows the step changed. Keep
    the same keys from step to step, so the reader sees values change.
