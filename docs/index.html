@@ -42,13 +42,6 @@
     .question { font-family: var(--wc-mono); font-size: 12px; color: var(--wc-accent); margin: 8px 0 0; }
     h3 { font-size: 19px; font-weight: 500; color: var(--wc-ink); margin: 32px 0 8px; }
 
-    /* A walkthrough figure grows past the text column on a wide
-     * screen, so its narration panel fits beside the stage. No
-     * transform here: it would trap the fullscreen overlay. */
-    @media (min-width: 1240px) {
-      .bleed { position: relative; width: min(980px, calc(100vw - 340px)); left: 50%; margin-left: calc(min(980px, calc(100vw - 340px)) / -2); }
-    }
-
     .theme { position: fixed; top: 16px; right: 16px; font-family: var(--wc-mono); font-size: 11px; border: 1px solid var(--wc-line-strong); border-radius: 8px; background: var(--wc-paper); color: var(--wc-muted); padding: 6px 12px; cursor: pointer; z-index: 10; }
 
     @media (max-width: 860px) {
@@ -447,7 +440,7 @@
         active one wears a ring, and the active arrow draws itself.
         Click the diagram or press the arrow keys to move.</p>
 
-<wc-flowchart class="bleed">
+<wc-flowchart>
       <script type="application/json">
       {
         "label": "FIG 6 · RELEASE WALKTHROUGH",

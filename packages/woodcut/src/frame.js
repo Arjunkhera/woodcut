@@ -136,11 +136,20 @@ svg.diagram .badge.cur { fill: var(--wc-accent, #6b5640); }
 .svgwrap:focus { outline: none; }
 .svgwrap:focus-visible { outline: 2px solid var(--wc-accent); outline-offset: 4px; border-radius: 4px; }
 .svgwrap svg.diagram.stepable { cursor: pointer; }
-.narr { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--wc-line); padding: 14px 2px 6px 2px; min-width: 0; }
+/* The layout follows the width of the figure, not the window. Under
+ * 1000 px the diagram keeps the full width and the panel sits under
+ * it: the pills on top, then the prose and the record side by side
+ * when there is room. From 1000 px the panel moves beside the
+ * diagram. */
+.narr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 24px; align-items: start; border-top: 1px solid var(--wc-line); padding: 12px 2px 6px 2px; min-width: 0; }
+.narr .track { grid-column: 1 / -1; }
 .narr[hidden], .summary[hidden] { display: none; }
-@container (min-width: 760px) {
-  .walkgrid:not(.solo) { grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr); gap: 24px; align-items: start; }
-  .walkgrid:not(.solo) .narr { border-top: 0; border-left: 1px solid var(--wc-line); padding: 6px 0 6px 20px; }
+@container (min-width: 560px) {
+  .narr.hasrec { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+}
+@container (min-width: 1000px) {
+  .walkgrid:not(.solo) { grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr); gap: 24px; align-items: start; }
+  .walkgrid:not(.solo) .narr { grid-template-columns: minmax(0, 1fr); gap: 12px; border-top: 0; border-left: 1px solid var(--wc-line); padding: 6px 0 6px 20px; }
 }
 .track { display: flex; flex-wrap: wrap; gap: 6px; }
 .tp { font-family: var(--wc-mono, ui-monospace, monospace); font-size: 10.5px; line-height: 1; padding: 5px 9px; border-radius: 999px; border: 1px dashed var(--wc-line-strong); background: transparent; color: var(--wc-faint); cursor: pointer; transition: background-color var(--wc-dur-fast, 150ms) ${EASE}, color var(--wc-dur-fast, 150ms) ${EASE}, border-color var(--wc-dur-fast, 150ms) ${EASE}; }
@@ -148,7 +157,7 @@ svg.diagram .badge.cur { fill: var(--wc-accent, #6b5640); }
 .tp.cur { border-style: solid; border-color: var(--wc-accent); background: var(--wc-accent); color: var(--wc-paper); font-weight: 500; }
 .nstep { font-size: 10.5px; letter-spacing: 0.12em; color: var(--wc-accent); }
 .nsay { display: flex; flex-direction: column; gap: 6px; }
-.ntitle { font-size: 21px; line-height: 1.25; color: var(--wc-ink); }
+.ntitle { font-size: 19px; line-height: 1.25; color: var(--wc-ink); }
 .nbody { font-size: 15px; line-height: 1.55; color: var(--wc-body); }
 .rise { animation: wc-rise var(--wc-dur-base, 220ms) ${EASE} both; }
 .rec { border: 1px solid var(--wc-line); border-radius: 6px; padding: 8px 12px 6px 12px; }
@@ -848,6 +857,7 @@ export class WoodcutFigure extends HTMLElement {
     this.narrEl.appendChild(say);
 
     const rec = this.renderRecord(step);
+    this.narrEl.classList.toggle('hasrec', !!rec);
     if (rec) this.narrEl.appendChild(rec);
 
     const sum = step.summary;
