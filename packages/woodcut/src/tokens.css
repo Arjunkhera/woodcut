@@ -12,8 +12,16 @@
   --wc-accent: #4a5d7e;
   --wc-panel: #edf0f4;
   --wc-card: #ffffff;
+  --wc-accent-soft: #d8dfea;
+  --wc-danger: #a3392c;
+  --wc-danger-soft: #f6e3df;
   --wc-serif: Georgia, 'Times New Roman', serif;
   --wc-mono: ui-monospace, 'SF Mono', Menlo, monospace;
   --wc-dur-fast: 150ms;
   --wc-dur-base: 220ms;
+  /* Step transitions the reader triggers: an element that enters,
+   * and an arrow that draws itself. GRAMMAR.md caps the whole step
+   * at 900 ms: draw plus the fast label fade. */
+  --wc-dur-step: 450ms;
+  --wc-dur-draw: 700ms;
 }

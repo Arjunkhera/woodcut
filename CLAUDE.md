@@ -9,8 +9,9 @@ and enforce the taste.
 1. `GRAMMAR.md` is the law of taste. Do not contradict it in code,
    docs, or examples. Change it only when the owner locks a new rule.
 2. `packages/woodcut/src/frame.js` carries the four interaction
-   capabilities (cards, expand, variants, replay). Every diagram type
-   extends it. Never reimplement chrome in a component.
+   capabilities (cards, expand, variants, replay). Replay includes
+   narrated walkthroughs. Every diagram type extends it. Never
+   reimplement chrome in a component.
 3. `skills/figure/SKILL.md` is what consumer agents read. Keep its
    type table and data rules current with the code.
 

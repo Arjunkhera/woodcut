@@ -12,6 +12,9 @@
   --wc-accent: #9a5b2d;
   --wc-panel: #f3ecd9;
   --wc-card: #ffffff;
+  --wc-accent-soft: #eddcc6;
+  --wc-danger: #a53a2a;
+  --wc-danger-soft: #f5dfd6;
   --wc-serif: 'Newsreader', Georgia, serif;
   --wc-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 }
@@ -27,4 +30,7 @@
   --wc-accent: #d99a4e;
   --wc-panel: #2e2921;
   --wc-card: #2e2921;
+  --wc-accent-soft: #4a3920;
+  --wc-danger: #e27a63;
+  --wc-danger-soft: #3d231d;
 }
